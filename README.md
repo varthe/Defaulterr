@@ -29,8 +29,10 @@ Filters consist of the following:
     - **include**: Properties inside MUST appear in the audio stream for the filter to match
     - **exclude**: Properties inside MUST NOT appear in the audio stream for the filter to match
 
-You can have multiple groups in a library, and multiple filters in a group. The first matching filter going down will be applied. If no filters match, nothing will be done for that item (aka leave as it is in Plex).
-Filters can include any property inside the audio stream object returned by Plex. See [example.json]() for a few examples of such objects.
+You can have multiple groups in a library, and multiple filters in a group. 
+The first matching filter going down will be applied.  
+If no filters match, nothing will be done for that item (aka leave as it is in Plex).
+Filters can include any property inside the audio stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for a few examples of such objects.
 You can start filters with either an **include** or **exclude**. Each separate filter MUST start with a `-`.
 #### Example config.yaml:
 ```
