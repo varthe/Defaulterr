@@ -19,10 +19,12 @@ services:
     restart: unless-stopped
 ```
 ### Config
+See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
 #### Groups
 Groups are collections of user tokens which will share filters. They can be named anything you like.
 Tokens must have access to your server. They are NOT regular tokens. See this [Reddit comment](https://www.reddit.com/r/PleX/comments/18ihi91/comment/kddct4k/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button) by Blind_Watchman on how to obtain access tokens.
 #### Filters
+##### Filters example in [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
 Filters consist of the following:
 - **Library name**: Name of the library to which the filter applies
   - **Group name**: Name of the group to which the filter applies inside the above library
@@ -36,44 +38,7 @@ If no filters match, nothing will be done for that item (aka leave as it is in P
 
 Filters can include any property inside the audio stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for a few examples of such objects.
 You can start filters with either an **include** or **exclude**. Each separate filter MUST start with a `-`.
-#### Example config.yaml:
-```
-plex_url: ''
-plex_owner_token: ''
 
-# WARNING: Full and dry runs use a lot of resources in a short burst when ran
-dry_run: True # Do a test run without updating. Useful to test filters before commiting
-full_run_on_start: False # Update every item in all libraries using the filters when the applicacation is ran
-full_run_cron_expression: '' # To do a full run at an interval or time of day. See: https://crontab.guru/
-
-groups:
-  serialTranscoders: # Can be named anything
-    - token
-    - token
-  weebs: # Can be named anything
-    - token
-    - token
-
-filters:
-  Movies: # Library name
-    serialTranscoders: # Group name
-      # Filter 1 - First English track that's not TRUEHD and not a commentary
-      - include:
-          language: English
-        exclude:
-          codec: truehd
-          extendedDisplayTitle: commentary # Checks whether the word "commentary" is present
-      # Filter 2 - Any English track (fallback if the above filter doesn't match)
-      - include:
-          language: English
-    weebs:
-      - include:
-          language: English
-  Anime: # Library name
-    weebs: # Group name
-      - include:
-          languageCode: jpn # Weebs will have movies default to English, and Anime to Japanese
-```
 ### Tautulli webhook
 To have filters automatically apply to newly added items you need to set up a Tautulli webhook.
 In Tautulli:
