@@ -1,0 +1,33 @@
+{
+    id: 36834,
+    streamType: 2,
+    selected: true,
+    default: true,
+    codec: 'opus',
+    index: 1,
+    channels: 2,
+    bitrate: 121,
+    language: '日本語',
+    languageTag: 'ja',
+    languageCode: 'jpn',
+    audioChannelLayout: 'stereo',
+    samplingRate: 48000,
+    title: 'Opus 2.0 @ 121 kb/s',
+    displayTitle: '日本語 (OPUS Stereo)',
+    extendedDisplayTitle: 'Opus 2.0 @ 121 kb/s (日本語)'
+  }
+  {
+    id: 36525,
+    streamType: 2,
+    default: true,
+    codec: 'aac',
+    index: 1,
+    channels: 6,
+    language: 'English',
+    languageTag: 'en',
+    languageCode: 'eng',
+    profile: 'lc',
+    samplingRate: 48000,
+    displayTitle: 'English (AAC 5.1)',
+    extendedDisplayTitle: 'English (AAC 5.1)'
+  }

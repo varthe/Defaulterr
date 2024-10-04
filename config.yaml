@@ -1,0 +1,37 @@
+plex_url: ''
+plex_owner_token: ''
+
+# WARNING: Full and dry runs use a lot of resources in a short burst when ran
+dry_run: True # Do a test run without updating. Useful to test filters before commiting
+full_run_on_start: False # Update every item in all libraries using the filters when the applicacation is ran
+full_run_cron_expression: '' # To do a full run at an interval or time of day. See: https://crontab.guru/
+
+# Access tokens required for groups. These are NOT regular tokens, see README for more info
+groups:
+  serialTranscoders: # Can be named anything
+    - token
+    - token
+  weebs: # Can be named anything
+    - token
+    - token
+
+filters:
+  Movies: # Library name
+    serialTranscoders: # Group name
+      # Filter 1 - First English track that's not TRUEHD and not a commentary
+      - include:
+          language: English
+        exclude:
+          codec: truehd
+          extendedDisplayTitle: commentary # Checks whether the word "commentary" is present
+      # Filter 2 - Any English track (fallback if the above filter doesn't match)
+      - include:
+          language: English
+    weebs:
+      - include:
+          language: English
+  Anime: # Library name
+    weebs: # Group name
+      - include:
+          languageCode: jpn # Weebs will have movies default to English, and Anime to Japanese
+
