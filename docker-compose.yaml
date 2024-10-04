@@ -1,0 +1,11 @@
+services:
+  defaulterr:
+    image: varthe/defaulterr
+    container_name: defaulterr
+    hostname: defaulterr
+    ports: 
+      - 3184:3184
+    volumes:
+      - /path/to/config:/config
+      - /path/to/logs:/logs
+    restart: unless-stopped
