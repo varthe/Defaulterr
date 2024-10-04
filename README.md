@@ -16,7 +16,6 @@ services:
     volumes:
       - /path/to/config:/config
       - /path/to/logs:/logs
-    restart: unless-stopped
 ```
 ### Config
 See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
