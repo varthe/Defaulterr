@@ -41,14 +41,16 @@ You can start filters with either an **include** or **exclude**. Each separate f
 ### Tautulli webhook
 To have filters automatically apply to newly added items you need to set up a Tautulli webhook.
 In Tautulli:
-  1. Go to **Settings -> Notification Agents**
-  2. Click on **Add a new notification agent**
-  3. Select **Webhook**
-  4. Paste the Defaulterr URL inside **Webhook URL**: http://defaulterr:3184/webhook
-  5. For **Webhook Method** select **POST**
-  6. Go to the **Triggers** tab and tick **Recently Added**
-  7. Go to the **Data** tab and click on **Recently Added** 
-  8. Paste the following into **JSON Data** and hit **Save**:
+  1. Go to **Settings -> Notifications & Newsletters**
+  2. Set **Recently Added Notification Delay** to **60**. Note that you should increase this value if your notifications are firing too early.
+  3. Go to **Settings -> Notification Agents**
+  4. Click on **Add a new notification agent**
+  5. Select **Webhook**
+  6. Paste the Defaulterr URL inside **Webhook URL**: http://defaulterr:3184/webhook
+  7. For **Webhook Method** select **POST**
+  8. Go to the **Triggers** tab and tick **Recently Added**
+  9. Go to the **Data** tab and click on **Recently Added** 
+  10. Paste the following into **JSON Data** and hit **Save**:
 ```
 <movie>
 {
