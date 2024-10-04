@@ -32,7 +32,7 @@ Filters consist of the following:
 
 You can have multiple groups in a library, and multiple filters in a group. 
 
-The first matching filter going down will be applied.  
+The first matching filter going down the list will be applied.  
 If no filters match, nothing will be done for that item (aka leave as it is in Plex).
 
 Filters can include any property inside the audio stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for a few examples of such objects.
