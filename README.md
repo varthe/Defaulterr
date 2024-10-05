@@ -28,7 +28,7 @@ Filters consist of the following:
 - **Library name**: Name of the library to which the filter applies
   - **Group name**: Name of the group to which the filter applies inside the above library
     - **include**: Properties inside MUST appear in the audio stream for the filter to match
-    - **exclude**: Properties inside MUST NOT appear in the audio stream for the filter to match
+    - **exclude**: Properties inside MUST NOT appear in the audio stream for the filter to match, or not be the specified value
 
 You can have multiple groups in a library, and multiple filters in a group. 
 
