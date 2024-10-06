@@ -1,37 +1,82 @@
+
+# REQUIRED
 plex_url: ''
+plex_owner_name: '' # To include owner in groups
 plex_owner_token: ''
+plex_client_identifier: '' # See README on how to obtain
+# REQUIRED END
 
-# WARNING: Full and dry runs use a lot of resources in a short burst when ran
+# RUN SETTINGS
+# WARNING: Full runs can take a while to complete
 dry_run: True # Do a test run without updating. Useful to test filters before commiting
-full_run_on_start: False # Update every item in all libraries using the filters when the applicacation is ran
+full_run_on_start: False # Update every item in all libraries using the filters when the applicacation is ran. Recommended to only run ONCE and set up a webhook for new media
 full_run_cron_expression: '' # To do a full run at an interval or time of day. See: https://crontab.guru/
+# RUN SETTINGS END
 
-# Access tokens required for groups. These are NOT regular tokens, see README for more info
+# BATCH SETTINGS
+# WARNING: Changing these values can cause unexpected errors. Increase batch_size and reduce batch_delay to speed up but use more CPU
+# Processing streams
+process_batch_size: 5
+process_batch_delay: 500
+# Updating users
+update_batch_size: 100
+update_batch_delay: 500
+# BATCH SETTINGS END
+
+# GROUPS
+# List usernames EXACTLY like they appear in Plex. Include capital letters and special characters
+# Optionally use $ALL in place of username to include ALL users from your server
 groups:
   serialTranscoders: # Can be named anything
-    - token
-    - token
+    - varthe
+    - UserWithCapitalLetters # EXACTLY like in plex INCLUDING capital letters.
+    # - $ALL
+  subtitleEnjoyers: # Can be named anything
+    - user1
+    - user2
+  deafPeople: # Can be named anything
+    - user2
+    - user3
   weebs: # Can be named anything
-    - token
-    - token
+    - user3
+    - user4
+# GROUPS END
 
+# FILTERS
 filters:
   Movies: # Library name
     serialTranscoders: # Group name
-      # Filter 1 - First English track that's not TRUEHD and not a commentary
-      - include:
-          language: English
-        exclude:
-          codec: truehd
-          extendedDisplayTitle: commentary # Checks whether the word "commentary" is present
-      # Filter 2 - Any English track (fallback if the above filter doesn't match)
-      - include:
-          language: English
-    weebs:
-      - include:
-          language: English
+      audio:
+        # Audio Filter 1 - First English audio track that's not TRUEHD and not a commentary
+        - include:
+            language: English
+          exclude:
+            codec: truehd
+            extendedDisplayTitle: commentary # Checks whether the word "commentary" is present
+        # Audio Filter 2 - Any English track (fallback if the above filter doesn't match)
+        - include:
+            language: English
+      subtitles:
+        # Subtitle Filter 1- Any English track that's not forced
+        - include:
+            language: English
+          exclude:
+            extendedDisplayTitle: forced
+    deafPeople: # Group name
+      subtitles:
+        # Subtitle Filter 1 - Any English SDH track
+        - include:
+            language: English
+            extendedDisplayTitle: sdh
   Anime: # Library name
     weebs: # Group name
-      - include:
-          languageCode: jpn # Weebs will have movies default to English, and Anime to Japanese
+      audio:
+        - include:
+            languageCode: jpn # Japanese
+      subtitles:
+        - include:
+            language: English
+          exclude:
+            extendedDisplayTitle: signs
+
 
