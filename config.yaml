@@ -57,14 +57,14 @@ filters:
         - include:
             language: English
       subtitles:
-        # Subtitle Filter 1- Any English track that's not forced
+        # Subtitle Filter 1- First English track that's not forced
         - include:
             language: English
           exclude:
             extendedDisplayTitle: forced
     deafPeople: # Group name
       subtitles:
-        # Subtitle Filter 1 - Any English SDH track
+        # Subtitle Filter 1 - First English SDH track
         - include:
             language: English
             extendedDisplayTitle: sdh
