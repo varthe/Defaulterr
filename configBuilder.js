@@ -18,8 +18,10 @@ const schema = {
     dry_run: { type: 'boolean' },
     full_run_on_start: { type: 'boolean' },
     full_run_cron_expression: { type: 'string' },
-    batch_size: { type: 'integer', minimum: 1 },  // New batch size property
-    batch_delay: { type: 'integer', minimum: 0 }, // New batch delay property
+    process_batch_size: { type: 'integer', minimum: 1 },
+    process_batch_delay: { type: 'integer', minimum: 0 },
+    update_batch_size: { type: 'integer', minimum: 1 },
+    update_batch_delay: { type: 'integer', minimum: 0 },
     groups: {
       type: 'object',
       patternProperties: {
@@ -81,7 +83,7 @@ const schema = {
       }
     }
   },
-  required: ['plex_url', 'plex_owner_token', 'plex_client_identifier', 'groups', 'filters', 'batch_size', 'batch_delay'], // Added batch_size and batch_delay as required fields
+  required: ['plex_url', 'plex_owner_token', 'plex_client_identifier', 'groups', 'filters', 'process_batch_size', 'process_batch_delay', 'update_batch_size', 'update_batch_delay'],
   additionalProperties: false
 };
 

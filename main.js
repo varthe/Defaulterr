@@ -19,8 +19,7 @@ const axiosInstance = axios.create({
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
-  timeout: 120000,
-
+  timeout: 120000
 })
 
 // Utility to handle error logging
@@ -29,19 +28,23 @@ const handleAxiosError = (context, error) => {
 }
 
 const batchExecute = async (tasks) => {
-  for (let i = 0; i < tasks.length; i += config.batch_size) {
-    await Promise.all(tasks.slice(i, i + config.batch_size).map(task => task()))
-    if (i + config.batch_size < tasks.length) await new Promise(resolve => setTimeout(resolve, config.batch_delay))  
+  const batchSize = config.update_batch_size
+  const batchDelay = config.update_batch_delay
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    await Promise.all(tasks.slice(i, i + batchSize).map(task => task()))
+    if (i + batchSize < tasks.length) await new Promise(resolve => setTimeout(resolve, batchDelay))  
   }
 }
 const batchReturn = async (tasks) => {
+  const batchSize = config.process_batch_size
+  const batchDelay = config.process_batch_delay
   const results = []
-  for (let i = 0; i < tasks.length; i += config.batch_size) {
-    const batch = tasks.slice(i, i + config.batch_size);
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
     const batchResults = await Promise.all(batch.map(task => task()));
     results.push(...batchResults);
-    if (i + config.batch_size < tasks.length) {
-      await new Promise(resolve => setTimeout(resolve, config.batch_delay)); // Delay after each batch
+    if (i + batchSize < tasks.length) {
+      await new Promise(resolve => setTimeout(resolve, batchDelay)); // Delay after each batch
     }
   }
   return results; 
@@ -225,7 +228,7 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
     for (const part of parts) {
       if (part.streams.length <= 1) {
-        //logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
+        logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
         continue
       }
       
@@ -236,11 +239,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
           stream.streamType === STREAM_TYPES.audio && evaluateStream(stream, filters.audio)
         )
         if (audioStream) {
-          //logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
+          logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
           partUpdate.audioStreamId = audioStream.id
         }
         else {
-          //logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+          logger.info(`Part ID ${part.partId}: no match found for audio streams`)
         }
       }
       if (filters.subtitles) {
@@ -248,11 +251,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
           stream.streamType === STREAM_TYPES.subtitles && evaluateStream(stream, filters.subtitles)
         )
         if (subtitleStream) {
-          //logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
+          logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
           partUpdate.subtitleStreamId = subtitleStream.id
         }
         else {
-          //logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
+          logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
         }
       }
 
@@ -286,8 +289,11 @@ const identifyNewStreamsForFullRun = async () => {
 // Update default streams across groups
 const updateDefaultStreams = async (updates) => {
   for (const { group, newStreams } of updates) {
-    const usernames = config.groups[group] || []
-    if (usernames.includes("$ALL")) usernames = USERS.keys()
+    var usernames = config.groups[group] || []
+    if (usernames.includes("$ALL")) {
+      usernames = [...USERS.keys()]
+      usernames.splice(usernames.indexOf("KingCodeTM"), 1)
+    }
     if (usernames.length === 0) throw new Error("No groups found in config. Aborting update")
     
     const tasks = usernames.flatMap(username => 
