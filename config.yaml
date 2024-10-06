@@ -21,6 +21,8 @@ process_batch_delay: 500
 # Updating users
 update_batch_size: 50
 update_batch_delay: 100
+# Timeout
+timeout: 300000 # Defaults to 5 min. Increase for larger libraries
 # BATCH SETTINGS END
 
 # GROUPS
