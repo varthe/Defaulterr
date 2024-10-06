@@ -21,32 +21,48 @@ const axiosInstance = axios.create({
 
 // Utility to handle error logging
 const handleAxiosError = (context, error) => {
-  logger.error(`${context}: ${error.message}`)
+  logger.error(`Error ${context}: ${error.message}`)
 }
+
+const batchExecute = async (tasks) => {
+  for (let i = 0; i < tasks.length; i += config.batch_size) {
+    await Promise.all(tasks.slice(i, i + config.batch_size).map(task => task()))
+    if (i + config.batch_size < tasks.length) await new Promise(resolve => setTimeout(resolve, config.batch_delay))  
+  }
+}
+const batchReturn = async (tasks) => {
+  const results = []
+  for (let i = 0; i < tasks.length; i += config.batch_size) {
+    const batch = tasks.slice(i, i + config.batch_size);
+    const batchResults = await Promise.all(batch.map(task => task()));
+    results.push(...batchResults);
+    if (i + config.batch_size < tasks.length) {
+      await new Promise(resolve => setTimeout(resolve, config.batch_delay)); // Delay after each batch
+    }
+  }
+  return results; 
+};
 
 // Verify each token can access the API endpoint
 const verifyTokens = async () => {
   const tokens = Object.values(config.groups).flat()
-  await Promise.all(
-    tokens.map(async (token) => {
-      try {
-        await axios.get(`${config.plex_url}/library/sections`, {
-          headers: { "X-Plex-Token": token },
+  const tasks = tokens.map((token) => async () => {
+      return axios
+        .get(`${config.plex_url}/library/sections`, { headers: { "X-Plex-Token": token } })
+        .then(logger.info(`Validating token ${token}... Valid`))
+        .catch((error) => {
+          logger.error(`Error validating token: ${error.message}`)
+          process.exit(1)
         })
-        logger.info(`Validating token ${token}... Valid`)
-      } catch (error) {
-        logger.error(`Error validating token: ${error.message}`)
-        process.exit(1)
-      }
     })
-  )
+  await batchExecute(tasks)
+
 }
 
 const setupCronJob = () => {
   if (config.dry_run || !config.full_run_cron_expression) return
-  const expression = config.full_run_cron_expression
-  if (!cronValidator.isValidCron(expression)) throw new Error(`Invalid cron expression: ${expression}`)
-  cron.schedule(expression, async () => {
+  if (!cronValidator.isValidCron(config.full_run_cron_expression)) throw new Error(`Invalid cron expression: ${expression}`)
+  cron.schedule(config.full_run_cron_expression, async () => {
     logger.info(`Running scheduled full run at ${new Date().toISOString()}`)
     await performFullRun()
   })
@@ -57,13 +73,14 @@ const fetchAllLibraries = async () => {
   try {
     const { data } = await axiosInstance.get("/library/sections")
     const libraries = data?.MediaContainer?.Directory || []
-    libraries.forEach(async (library) => {
-      if (!(library.title in config.filters)) return
-      if (!["movie", "show"].includes(library.type)) throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
-      LIBRARIES.set(library.key, { name: library.title, type: library.type })
+    libraries.forEach(library => {
+      if (library.title in config.filters) {
+        if (!["movie", "show"].includes(library.type)) throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
+        LIBRARIES.set(library.key, { name: library.title, type: library.type })
+      }
     })
   } catch (error) {
-    logger.error(`Error fetching libraries: ${error.message}`)
+    handleAxiosError('fetching libraries', error)
   }
 }
 
@@ -102,9 +119,9 @@ const fetchStreamsForSeason = async (seasonId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${seasonId}/children`)
     const episodes = data?.MediaContainer?.Metadata || []
-    return Promise.all(episodes.map((episode) => fetchStreamsForItem(episode.ratingKey)))
+    return await batchReturn(episodes.map(episode => async () => fetchStreamsForItem(episode.ratingKey)))
   } catch (error) {
-    handleAxiosError(`Fetching episodes for Season ID ${seasonId}`, error)
+    handleAxiosError(`fetching episodes for Season ID ${seasonId}`, error)
     return []
   }
 }
@@ -114,9 +131,10 @@ const fetchStreamsForShow = async (showId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${showId}/children`)
     const seasons = data?.MediaContainer?.Metadata || []
-    return (await Promise.all(seasons.map((season) => fetchStreamsForSeason(season.ratingKey)))).flat()
+    const allStreams = await batchReturn(seasons.map(season => async () => fetchStreamsForSeason(season.ratingKey)))
+    return allStreams.flat()
   } catch (error) {
-    handleAxiosError(`Fetching seasons for Show ID ${showId}`, error)
+    handleAxiosError(`fetching seasons for Show ID ${showId}`, error)
     return []
   }
 }
@@ -129,13 +147,15 @@ const fetchStreamsForLibrary = async (libraryName) => {
     const items = data?.MediaContainer?.Metadata || []
 
     if (type === "movie") {
-      return Promise.all(items.map((item) => fetchStreamsForItem(item.ratingKey)))
-    } else if (type === "show") {
-      return (await Promise.all(items.map((item) => fetchStreamsForShow(item.ratingKey)))).flat()
+      return await batchReturn(items.map((item) => async () => fetchStreamsForItem(item.ratingKey)))
+    } 
+    else if (type === "show") {
+      const allStreams = await batchReturn(items.map((item) => async () => fetchStreamsForShow(item.ratingKey)))  
+      return allStreams.flat()
     }
     throw new Error(`Unsupported library type for '${libraryName}'`)
   } catch (error) {
-    handleAxiosError(`Fetching streams for Library '${libraryName}'`, error)
+    handleAxiosError(`fetching streams for Library '${libraryName}'`, error)
     return []
   }
 }
@@ -148,7 +168,7 @@ const fetchLibraryDetailsByName = async (libraryName) => {
     }
     throw new Error(`Library '${libraryName}' not found`)
   } catch (error) {
-    handleAxiosError(`Fetching library details for '${libraryName}'`, error)
+    handleAxiosError(`fetching library details for '${libraryName}'`, error)
     return { id: null, type: null }
   }
 }
@@ -157,50 +177,40 @@ const fetchLibraryDetailsByName = async (libraryName) => {
 const identifyStreamsToUpdate = async (parts, filters) => {
   try {
     const streamsToUpdate = []
-    var subCount = 0
-    var audioCount = 0
+
     for (const part of parts) {
       if (part.streams.length <= 1) {
-        logger.info(`Part ID ${part.partId} only one stream present. Skipping`)
+        logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
         continue
       }
+      
       const partUpdate = {partId: part.partId}
 
-      const audioStreams = part.streams.filter((stream) => stream.streamType === STREAM_TYPES.audio)
-      const subtitleStreams = part.streams.filter((stream) => stream.streamType === STREAM_TYPES.subtitles)
+      const audioStream = part.streams.find((stream) => 
+        stream.streamType === STREAM_TYPES.audio && evaluateStream(stream, filters.audio)
+      )
+      const subtitleStream = part.streams.find((stream) => 
+        stream.streamType === STREAM_TYPES.subtitles && evaluateStream(stream, filters.subtitles)
+      )
 
-      if (audioStreams && audioStreams.length > 1) {
-        for (const audioStream of audioStreams) {
-          if (evaluateStream(audioStream, filters.audio)) {
-            logger.info(`Part ID ${part.partId}: match found for audio stream '${audioStream.displayTitle}'`)
-            //streamsToUpdate.push({ partId: part.partId, audioStreamId: stream.id })
-            partUpdate.audioStreamId = audioStream.id
-            break
-          }
-        }
+      if (audioStream) {
+        logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
+        partUpdate.audioStreamId = audioStream.id
       }
       else {
-        logger.info(`Part ID ${part.partId}: only one audio stream present. Skipping`)
-      } 
-      
-      if (!partUpdate.audioStreamId) logger.info(`Part ID ${part.partId}: no match found for audio streams. Skipping`)
-
-      if (subtitleStreams && subtitleStreams.length > 1) {
-        for (const subtitleStream of subtitleStreams) {
-          if (evaluateStream(subtitleStream, filters.subtitles)) {
-            logger.info(`Part ID ${part.partId}: match found for subtitle stream '${subtitleStream.displayTitle}'`)
-            partUpdate.subtitleStreamId = subtitleStream.id
-            break
-          }
-        }
+        logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+      }
+      if (subtitleStream) {
+        logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
+        partUpdate.subtitleStreamId = subtitleStream.id
       }
       else {
-        logger.info(`Part ID ${part.partId}: only one subtitle stream present. Skipping`)
+        logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
       }
 
-      if (!partUpdate.audioStreamId) logger.info(`Part ID ${part.partId}: no match found for subtitle streams. Skipping`)
-
-      streamsToUpdate.push(partUpdate)
+      if (partUpdate.audioStreamId || partUpdate.subtitleStreamId) {
+        streamsToUpdate.push(partUpdate)
+      }
     }
     return streamsToUpdate
   } catch (error) {
@@ -230,22 +240,26 @@ const updateDefaultStreams = async (updates) => {
   for (const { group, newStreams } of updates) {
     const tokens = config.groups[group] || []
     if (tokens.length === 0) throw new Error("No groups found in config. Aborting update")
-
-    await Promise.all(
-      tokens.flatMap((token) =>
-        newStreams.map((stream) => {
-          const audioStream = stream.audioStreamId ? `audioStreamID=${stream.audioStreamId}` : ''
-          const subtitleStream = stream.subtitleStreamId ? `${audioStream.length > 0 ? '&' : ''}subtitleStreamID=${stream.subtitleStreamId}` :''
-          axiosInstance
-            .post(`/library/parts/${stream.partId}?${audioStream}${subtitleStream}`, {}, { headers: { "X-Plex-Token": token } })
-            .then((response) => logger.info(
-              `Update${audioStream ? ` Audio ID ${stream.audioStreamId}`:''}${subtitleStream ? `${audioStream ? ' and':''} Subtitle ID ${stream.subtitleStreamId}`:''} for group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`
-            ))
-            .catch((error) => logger.error(`Error posting update for group ${group}: ${error.message}`))
-        }
-        )
-      )
+    
+    const tasks = tokens.flatMap(token => 
+      newStreams.map((stream) => async () => {
+        const queryParams = new URLSearchParams()
+        if (stream.audioStreamId) queryParams.append('audioStreamID', stream.audioStreamId)
+        if (stream.subtitleStreamId) queryParams.append('subtitleStreamID', stream.subtitleStreamId)
+        return axiosInstance
+          .post(`/library/parts/${stream.partId}?${queryParams.toString()}`, {}, { headers: { "X-Plex-Token": token } })
+          .then((response) => {
+            const audioMessage = stream.audioStreamId ? `Audio ID ${stream.audioStreamId}` : ''
+            const subtitleMessage = stream.subtitleStreamId ? `Subtitle ID ${stream.subtitleStreamId}` : ''
+            const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(' and ')
+            logger.info(`Update ${updateMessage} for group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`)
+          })
+          .catch((error) => {
+            logger.error(`Error posting update for group ${group}: ${error.message}`)
+          })
+      })
     )
+    await batchExecute(tasks)
   }
 }
 
