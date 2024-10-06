@@ -346,7 +346,7 @@ app.post("/webhook", async (req, res) => {
     const filters = config.filters[libraryName]
     
     let streams = [] // Need arrays for identifyStreamsToUpdate
-    if (type === "movie" || type === "epsiode") streams = [await fetchStreamsForItem(mediaId, STREAM_TYPES.audio)]
+    if (type === "movie" || type === "epsiode") streams = [await fetchStreamsForItem(mediaId)]
     else if (type === "show") streams = await fetchStreamsForShow(mediaId)
     else if (type === "season") streams = await fetchStreamsForSeason(mediaId)
     // else do nothing
