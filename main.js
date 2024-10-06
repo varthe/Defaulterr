@@ -9,7 +9,7 @@ const config = loadAndValidateYAML()
 const app = express()
 app.use(express.json())
 
-const STREAM_TYPES = { video: 1, audio: 2, subtitle: 3 }
+const STREAM_TYPES = { video: 1, audio: 2, subtitles: 3 }
 const LIBRARIES = new Map()
 
 const axiosInstance = axios.create({
@@ -83,13 +83,13 @@ const evaluateStream = (stream, filters) => {
 }
 
 // Fetch streams for a specific media item (movie or episode)
-const fetchStreamsForItem = async (itemId, streamType) => {
+const fetchStreamsForItem = async (itemId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${itemId}`)
     const part = data?.MediaContainer?.Metadata[0]?.Media[0]?.Part[0]
     if (!part || !part.id) throw new Error("Invalid media structure from Plex API")
 
-    const streams = part.Stream.filter((stream) => stream.streamType === streamType)
+    const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
     return { partId: part.id, streams }
   } catch (error) {
     handleAxiosError(`Fetching streams for Item ID ${itemId}`, error)
@@ -102,7 +102,7 @@ const fetchStreamsForSeason = async (seasonId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${seasonId}/children`)
     const episodes = data?.MediaContainer?.Metadata || []
-    return Promise.all(episodes.map((episode) => fetchStreamsForItem(episode.ratingKey, STREAM_TYPES.audio)))
+    return Promise.all(episodes.map((episode) => fetchStreamsForItem(episode.ratingKey)))
   } catch (error) {
     handleAxiosError(`Fetching episodes for Season ID ${seasonId}`, error)
     return []
@@ -129,7 +129,7 @@ const fetchStreamsForLibrary = async (libraryName) => {
     const items = data?.MediaContainer?.Metadata || []
 
     if (type === "movie") {
-      return Promise.all(items.map((item) => fetchStreamsForItem(item.ratingKey, STREAM_TYPES.audio)))
+      return Promise.all(items.map((item) => fetchStreamsForItem(item.ratingKey)))
     } else if (type === "show") {
       return (await Promise.all(items.map((item) => fetchStreamsForShow(item.ratingKey)))).flat()
     }
@@ -157,20 +157,50 @@ const fetchLibraryDetailsByName = async (libraryName) => {
 const identifyStreamsToUpdate = async (parts, filters) => {
   try {
     const streamsToUpdate = []
-
+    var subCount = 0
+    var audioCount = 0
     for (const part of parts) {
       if (part.streams.length <= 1) {
         logger.info(`Part ID ${part.partId} only one stream present. Skipping`)
         continue
       }
+      const partUpdate = {partId: part.partId}
 
-      for (const stream of part.streams) {
-        if (evaluateStream(stream, filters)) {
-          logger.info(`Part ID ${part.partId}: match found for stream '${stream.displayTitle}'`)
-          streamsToUpdate.push({ partId: part.partId, streamId: stream.id })
-          break
+      const audioStreams = part.streams.filter((stream) => stream.streamType === STREAM_TYPES.audio)
+      const subtitleStreams = part.streams.filter((stream) => stream.streamType === STREAM_TYPES.subtitles)
+
+      if (audioStreams && audioStreams.length > 1) {
+        for (const audioStream of audioStreams) {
+          if (evaluateStream(audioStream, filters.audio)) {
+            logger.info(`Part ID ${part.partId}: match found for audio stream '${audioStream.displayTitle}'`)
+            //streamsToUpdate.push({ partId: part.partId, audioStreamId: stream.id })
+            partUpdate.audioStreamId = audioStream.id
+            break
+          }
         }
       }
+      else {
+        logger.info(`Part ID ${part.partId}: only one audio stream present. Skipping`)
+      } 
+      
+      if (!partUpdate.audioStreamId) logger.info(`Part ID ${part.partId}: no match found for audio streams. Skipping`)
+
+      if (subtitleStreams && subtitleStreams.length > 1) {
+        for (const subtitleStream of subtitleStreams) {
+          if (evaluateStream(subtitleStream, filters.subtitles)) {
+            logger.info(`Part ID ${part.partId}: match found for subtitle stream '${subtitleStream.displayTitle}'`)
+            partUpdate.subtitleStreamId = subtitleStream.id
+            break
+          }
+        }
+      }
+      else {
+        logger.info(`Part ID ${part.partId}: only one subtitle stream present. Skipping`)
+      }
+
+      if (!partUpdate.audioStreamId) logger.info(`Part ID ${part.partId}: no match found for subtitle streams. Skipping`)
+
+      streamsToUpdate.push(partUpdate)
     }
     return streamsToUpdate
   } catch (error) {
@@ -185,7 +215,6 @@ const identifyNewStreamsForFullRun = async () => {
 
   for (const libraryName in config.filters) {
     const libraryStreams = await fetchStreamsForLibrary(libraryName)
-
     for (const group in config.filters[libraryName]) {
       const streamsToUpdate = await identifyStreamsToUpdate(libraryStreams, config.filters[libraryName][group])
       if (streamsToUpdate.length > 0) {
@@ -204,11 +233,16 @@ const updateDefaultStreams = async (updates) => {
 
     await Promise.all(
       tokens.flatMap((token) =>
-        newStreams.map((stream) =>
+        newStreams.map((stream) => {
+          const audioStream = stream.audioStreamId ? `audioStreamID=${stream.audioStreamId}` : ''
+          const subtitleStream = stream.subtitleStreamId ? `${audioStream.length > 0 ? '&' : ''}subtitleStreamID=${stream.subtitleStreamId}` :''
           axiosInstance
-            .post(`/library/parts/${stream.partId}?audioStreamID=${stream.streamId}`, {}, { headers: { "X-Plex-Token": token } })
-            .then((response) => logger.info(`Updated stream ID ${stream.streamId} for group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`))
+            .post(`/library/parts/${stream.partId}?${audioStream}${subtitleStream}`, {}, { headers: { "X-Plex-Token": token } })
+            .then((response) => logger.info(
+              `Update${audioStream ? ` Audio ID ${stream.audioStreamId}`:''}${subtitleStream ? `${audioStream ? ' and':''} Subtitle ID ${stream.subtitleStreamId}`:''} for group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`
+            ))
             .catch((error) => logger.error(`Error posting update for group ${group}: ${error.message}`))
+        }
         )
       )
     )
@@ -255,7 +289,8 @@ app.post("/webhook", async (req, res) => {
     for (const group in filters) {
       const newStreams = await identifyStreamsToUpdate(streams, filters[group])
       if (!newStreams || newStreams.length === 0){
-        throw new Error(`Could not apply filter to streams: ${group}. Ending request`)
+        logger.info("Could not find streams to update. Ending request")
+        return res.status(200).send("Event not relevant")
       }
       updates.push({group: group, newStreams: newStreams})
     }
