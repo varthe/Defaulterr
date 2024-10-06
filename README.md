@@ -20,22 +20,24 @@ services:
 ### Config
 See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
 #### Groups
-Groups are collections of user tokens which will share filters. They can be named anything you like.
-Tokens must have access to your server. They are NOT regular tokens. See this [Reddit comment](https://www.reddit.com/r/PleX/comments/18ihi91/comment/kddct4k/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button) by Blind_Watchman on how to obtain access tokens.
+Groups are collections of users with shared filters. They can be named anything you like.
+Usernames in groups MUST look EXACTLY like in Plex, including capital and special characters.
+You can also include ALL users with access to your library by replacing the username with `$ALL`
 #### Filters
 ##### Filters example in [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
 Filters consist of the following:
 - **Library name**: Name of the library to which the filter applies
   - **Group name**: Name of the group to which the filter applies inside the above library
-    - **include**: Properties inside MUST appear in the audio stream for the AND include the specified value
-    - **exclude**: Properties inside MUST NOT appear in the audio stream OR not be the specified value
+    - **Type**: Audio or Subtitles
+      - **include**: Properties inside MUST appear in the audio stream for the AND include the specified value
+      - **exclude**: Properties inside MUST NOT appear in the audio stream OR not be the specified value
 
 You can have multiple groups in a library, and multiple filters in a group. 
 
 The first matching filter going down the list will be applied.  
 If no filters match, nothing will be done for that item (aka leave as it is in Plex).
 
-Filters can include any property inside the audio stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for a few examples of such objects.
+Filters can include any property inside the stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for a few examples of such objects.
 You can start filters with either an **include** or **exclude**. Each separate filter MUST start with a `-`.
 
 ### Tautulli webhook
