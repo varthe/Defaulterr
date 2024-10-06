@@ -290,10 +290,7 @@ const identifyNewStreamsForFullRun = async () => {
 const updateDefaultStreams = async (updates) => {
   for (const { group, newStreams } of updates) {
     var usernames = config.groups[group] || []
-    if (usernames.includes("$ALL")) {
-      usernames = [...USERS.keys()]
-      usernames.splice(usernames.indexOf("KingCodeTM"), 1)
-    }
+    if (usernames.includes("$ALL")) usernames = [...USERS.keys()]
     if (usernames.length === 0) throw new Error("No groups found in config. Aborting update")
     
     const tasks = usernames.flatMap(username => 
