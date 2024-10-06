@@ -19,6 +19,8 @@ const axiosInstance = axios.create({
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
+  timeout: 120000,
+
 })
 
 // Utility to handle error logging
@@ -62,11 +64,11 @@ const getUserDetailsFromXml = async (xml) => {
 } catch (error) {
       throw new Error(`Error parsing XML: ${error.message}`)
   }
-}
+} 
 
 const fetchAllUsersListedInFilters = async () => {
   try {
-    if (!config.plex_client_identifier) return
+    if (!config.plex_client_identifier) throw new Error("Client identifier not supplied in config")
     const response = await axios.get(`https://plex.tv/api/servers/${config.plex_client_identifier}/shared_servers`, { headers: { "X-Plex-Token": config.plex_owner_token, "Accept": "application/json"} })
     const filterUsernames = new Set(Object.values(config.groups).flat())
     const users = await getUserDetailsFromXml(response.data)
@@ -96,7 +98,7 @@ const verifyTokens = async () => {
 
 const setupCronJob = () => {
   if (config.dry_run || !config.full_run_cron_expression) return
-  if (!cronValidator.isValidCron(config.full_run_cron_expression)) throw new Error(`Invalid cron expression: ${expression}`)
+  if (!cronValidator.isValidCron(config.full_run_cron_expression)) throw new Error(`Invalid cron expression: ${config.full_run_cron_expression}`)
   cron.schedule(config.full_run_cron_expression, async () => {
     logger.info(`Running scheduled full run at ${new Date().toISOString()}`)
     await performFullRun()
@@ -142,6 +144,7 @@ const fetchStreamsForItem = async (itemId) => {
     if (!part || !part.id) throw new Error("Invalid media structure from Plex API")
     const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
     return { partId: part.id, streams: streams }
+    
   } catch (error) {
     handleAxiosError(`fetching streams for Item ID ${itemId}`, error)
     return { partId: itemId, streams: [] } // Return empty streams on error
@@ -153,6 +156,10 @@ const fetchStreamsForSeason = async (seasonId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${seasonId}/children`)
     const episodes = data?.MediaContainer?.Metadata || []
+    if (episodes.length === 0) {
+      logger.warn(`No episodes found for Season ID ${seasonId}`)
+      return []
+    }
     return await batchReturn(episodes.map(episode => async () => fetchStreamsForItem(episode.ratingKey)))
   } catch (error) {
     handleAxiosError(`fetching episodes for Season ID ${seasonId}`, error)
@@ -165,6 +172,10 @@ const fetchStreamsForShow = async (showId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${showId}/children`)
     const seasons = data?.MediaContainer?.Metadata || []
+    if (seasons.length === 0) {
+      logger.warn(`No seasons found for show ID ${showId}`)
+      return []
+    }
     const allStreams = await batchReturn(seasons.map(season => async () => fetchStreamsForSeason(season.ratingKey)))
     return allStreams.flat()
   } catch (error) {
@@ -214,7 +225,7 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
     for (const part of parts) {
       if (part.streams.length <= 1) {
-        logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
+        //logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
         continue
       }
       
@@ -225,11 +236,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
           stream.streamType === STREAM_TYPES.audio && evaluateStream(stream, filters.audio)
         )
         if (audioStream) {
-          logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
+          //logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
           partUpdate.audioStreamId = audioStream.id
         }
         else {
-          logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+          //logger.info(`Part ID ${part.partId}: no match found for audio streams`)
         }
       }
       if (filters.subtitles) {
@@ -237,11 +248,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
           stream.streamType === STREAM_TYPES.subtitles && evaluateStream(stream, filters.subtitles)
         )
         if (subtitleStream) {
-          logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
+          //logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
           partUpdate.subtitleStreamId = subtitleStream.id
         }
         else {
-          logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
+          //logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
         }
       }
 

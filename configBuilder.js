@@ -81,7 +81,7 @@ const schema = {
       }
     }
   },
-  required: ['plex_url', 'plex_owner_token', 'groups', 'filters', 'batch_size', 'batch_delay'], // Added batch_size and batch_delay as required fields
+  required: ['plex_url', 'plex_owner_token', 'plex_client_identifier', 'groups', 'filters', 'batch_size', 'batch_delay'], // Added batch_size and batch_delay as required fields
   additionalProperties: false
 };
 
