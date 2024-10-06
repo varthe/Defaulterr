@@ -140,11 +140,10 @@ const fetchStreamsForItem = async (itemId) => {
     const { data } = await axiosInstance.get(`/library/metadata/${itemId}`)
     const part = data?.MediaContainer?.Metadata[0]?.Media[0]?.Part[0]
     if (!part || !part.id) throw new Error("Invalid media structure from Plex API")
-
     const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
-    return { partId: part.id, streams }
+    return { partId: part.id, streams: streams }
   } catch (error) {
-    handleAxiosError(`Fetching streams for Item ID ${itemId}`, error)
+    handleAxiosError(`fetching streams for Item ID ${itemId}`, error)
     return { partId: itemId, streams: [] } // Return empty streams on error
   }
 }
@@ -221,26 +220,29 @@ const identifyStreamsToUpdate = async (parts, filters) => {
       
       const partUpdate = {partId: part.partId}
 
-      const audioStream = part.streams.find((stream) => 
-        stream.streamType === STREAM_TYPES.audio && evaluateStream(stream, filters.audio)
-      )
-      const subtitleStream = part.streams.find((stream) => 
-        stream.streamType === STREAM_TYPES.subtitles && evaluateStream(stream, filters.subtitles)
-      )
-
-      if (audioStream) {
-        logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
-        partUpdate.audioStreamId = audioStream.id
+      if (filters.audio) {
+        const audioStream = part.streams.find((stream) =>
+          stream.streamType === STREAM_TYPES.audio && evaluateStream(stream, filters.audio)
+        )
+        if (audioStream) {
+          logger.info(`Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`)
+          partUpdate.audioStreamId = audioStream.id
+        }
+        else {
+          logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+        }
       }
-      else {
-        logger.info(`Part ID ${part.partId}: no match found for audio streams`)
-      }
-      if (subtitleStream) {
-        logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
-        partUpdate.subtitleStreamId = subtitleStream.id
-      }
-      else {
-        logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
+      if (filters.subtitles) {
+        const subtitleStream = part.streams.find((stream) => 
+          stream.streamType === STREAM_TYPES.subtitles && evaluateStream(stream, filters.subtitles)
+        )
+        if (subtitleStream) {
+          logger.info(`Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`)
+          partUpdate.subtitleStreamId = subtitleStream.id
+        }
+        else {
+          logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
+        }
       }
 
       if (partUpdate.audioStreamId || partUpdate.subtitleStreamId) {
