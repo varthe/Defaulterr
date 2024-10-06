@@ -12,7 +12,9 @@ const schema = {
   type: 'object',
   properties: {
     plex_url: { type: 'string' },
+    plex_owner_name: { type: 'string' },
     plex_owner_token: { type: 'string' },
+    plex_client_identifier: {type: 'string' },
     dry_run: { type: 'boolean' },
     full_run_on_start: { type: 'boolean' },
     full_run_cron_expression: { type: 'string' },

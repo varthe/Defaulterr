@@ -3,6 +3,7 @@ const axios = require("axios")
 const logger = require("./logger")
 const cron = require("node-cron")
 const cronValidator = require("cron-validator")
+const xml2js = require("xml2js")
 const loadAndValidateYAML = require("./configBuilder")
 
 const config = loadAndValidateYAML()
@@ -11,6 +12,7 @@ app.use(express.json())
 
 const STREAM_TYPES = { video: 1, audio: 2, subtitles: 3 }
 const LIBRARIES = new Map()
+const USERS = new Map()
 
 const axiosInstance = axios.create({
   baseURL: config.plex_url,
@@ -43,20 +45,53 @@ const batchReturn = async (tasks) => {
   return results; 
 };
 
+const getUserDetailsFromXml = async (xml) => {
+  const parser = new xml2js.Parser()
+  try {
+    // Parse the XML string
+    const result = await parser.parseStringPromise(xml);
+
+    // Extract the data
+    const sharedServers = result.MediaContainer.SharedServer;
+    const extractedData = sharedServers.map(server => {
+        const username = server.$.username;
+        const accessToken = server.$.accessToken;
+        return { username, accessToken };
+    });
+    return extractedData;
+} catch (error) {
+      throw new Error(`Error parsing XML: ${error.message}`)
+  }
+}
+
+const fetchAllUsersListedInFilters = async () => {
+  try {
+    if (!config.plex_client_identifier) return
+    const response = await axios.get(`https://plex.tv/api/servers/${config.plex_client_identifier}/shared_servers`, { headers: { "X-Plex-Token": config.plex_owner_token, "Accept": "application/json"} })
+    const filterUsernames = new Set(Object.values(config.groups).flat())
+    const users = await getUserDetailsFromXml(response.data)
+    users.forEach(user => {
+      if (filterUsernames.has(user.username) || filterUsernames.has("$ALL")) {
+        USERS.set(user.username, user.accessToken)
+      }
+    })
+  } catch (error) {
+    handleAxiosError("fetching users from server", error)
+    process.exit(1)
+  }
+
+}
 // Verify each token can access the API endpoint
 const verifyTokens = async () => {
-  const tokens = Object.values(config.groups).flat()
-  const tasks = tokens.map((token) => async () => {
-      return axios
-        .get(`${config.plex_url}/library/sections`, { headers: { "X-Plex-Token": token } })
-        .then(logger.info(`Validating token ${token}... Valid`))
-        .catch((error) => {
-          logger.error(`Error validating token: ${error.message}`)
-          process.exit(1)
-        })
-    })
-  await batchExecute(tasks)
-
+  USERS.forEach(async (token, username) => {
+    await axios
+      .get(`${config.plex_url}/library/sections`, { headers: { "X-Plex-Token": token } })
+      .then(logger.info(`Validating token for user ${username}... Valid`))
+      .catch((error) => {
+        handleAxiosError(`validating token for user ${username}: ${error.message}`)
+        process.exit(1)
+      })
+  })
 }
 
 const setupCronJob = () => {
@@ -238,21 +273,22 @@ const identifyNewStreamsForFullRun = async () => {
 // Update default streams across groups
 const updateDefaultStreams = async (updates) => {
   for (const { group, newStreams } of updates) {
-    const tokens = config.groups[group] || []
-    if (tokens.length === 0) throw new Error("No groups found in config. Aborting update")
+    const usernames = config.groups[group] || []
+    if (usernames.includes("$ALL")) usernames = USERS.keys()
+    if (usernames.length === 0) throw new Error("No groups found in config. Aborting update")
     
-    const tasks = tokens.flatMap(token => 
+    const tasks = usernames.flatMap(username => 
       newStreams.map((stream) => async () => {
         const queryParams = new URLSearchParams()
         if (stream.audioStreamId) queryParams.append('audioStreamID', stream.audioStreamId)
         if (stream.subtitleStreamId) queryParams.append('subtitleStreamID', stream.subtitleStreamId)
         return axiosInstance
-          .post(`/library/parts/${stream.partId}?${queryParams.toString()}`, {}, { headers: { "X-Plex-Token": token } })
+          .post(`/library/parts/${stream.partId}?${queryParams.toString()}`, {}, { headers: { "X-Plex-Token": USERS.get(username) } })
           .then((response) => {
             const audioMessage = stream.audioStreamId ? `Audio ID ${stream.audioStreamId}` : ''
             const subtitleMessage = stream.subtitleStreamId ? `Subtitle ID ${stream.subtitleStreamId}` : ''
             const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(' and ')
-            logger.info(`Update ${updateMessage} for group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`)
+            logger.info(`Update ${updateMessage} for user ${username} in group ${group}: ${response.status === 200 ? 'SUCCESS' : 'FAIL'}`)
           })
           .catch((error) => {
             logger.error(`Error posting update for group ${group}: ${error.message}`)
@@ -325,6 +361,8 @@ const PORT = process.env.PORT || 3184
 app.listen(PORT, async () => {
   logger.info(`Server is running on port ${PORT}`)
   try {
+    USERS.set(config.plex_owner_name, config.plex_owner_token)
+    await fetchAllUsersListedInFilters()
     await verifyTokens()
     await fetchAllLibraries()
     setupCronJob()
