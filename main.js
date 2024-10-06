@@ -377,7 +377,10 @@ const PORT = process.env.PORT || 3184
 app.listen(PORT, async () => {
   logger.info(`Server is running on port ${PORT}`)
   try {
-    USERS.set(config.plex_owner_name, config.plex_owner_token)
+    if (config.plex_owner_name) {
+      USERS.set(config.plex_owner_name, config.plex_owner_token)
+    }
+    
     await fetchAllUsersListedInFilters()
     await verifyTokens()
     await fetchAllLibraries()
