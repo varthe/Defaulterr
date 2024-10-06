@@ -19,7 +19,7 @@ const axiosInstance = axios.create({
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
-  timeout: 120000
+  timeout: config.timeout || 300000
 })
 
 // Utility to handle error logging

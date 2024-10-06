@@ -22,6 +22,7 @@ const schema = {
     process_batch_delay: { type: 'integer', minimum: 0 },
     update_batch_size: { type: 'integer', minimum: 1 },
     update_batch_delay: { type: 'integer', minimum: 0 },
+    timeout: { type: 'integer' },
     groups: {
       type: 'object',
       patternProperties: {
