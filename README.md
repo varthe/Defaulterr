@@ -19,6 +19,9 @@ services:
 ```
 ### Config
 See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml)
+
+### Obtaining the Client Identifier
+Go to `https://plex.tv/api/resources?X-Plex-Token={your_admin_token}` (put your admin token inside the curly braces) and find the clientIdentifier of your server
 #### Groups
 Groups are collections of users with shared filters. They can be named anything you like.
 Usernames in groups MUST look EXACTLY like in Plex, including capital and special characters.
