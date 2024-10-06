@@ -19,8 +19,8 @@ full_run_cron_expression: '' # To do a full run at an interval or time of day. S
 process_batch_size: 5
 process_batch_delay: 500
 # Updating users
-update_batch_size: 100
-update_batch_delay: 500
+update_batch_size: 50
+update_batch_delay: 100
 # BATCH SETTINGS END
 
 # GROUPS
