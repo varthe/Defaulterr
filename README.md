@@ -27,6 +27,7 @@ Groups are collections of users with shared filters. They can be named anything 
 
 Usernames in groups MUST look EXACTLY like in Plex, including capital and special characters.
 Ensure users have access to your libraries.
+
 You can also include ALL users with access to your library by replacing the username with `$ALL`
 
 #### Filters
