@@ -144,7 +144,7 @@ const fetchStreamsForItem = async (itemId) => {
   try {
     const { data } = await axiosInstance.get(`/library/metadata/${itemId}`)
     const part = data?.MediaContainer?.Metadata[0]?.Media[0]?.Part[0]
-    if (!part || !part.id) throw new Error("Invalid media structure from Plex API")
+    if (!part || !part.id || !part.Stream) throw new Error("Invalid media structure from Plex API. Skipping")
     const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
     return { partId: part.id, streams: streams }
     
@@ -227,7 +227,7 @@ const identifyStreamsToUpdate = async (parts, filters) => {
     const streamsToUpdate = []
 
     for (const part of parts) {
-      if (part.streams.length <= 1) {
+      if (!part.streams || part.streams.length <= 1) {
         logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
         continue
       }
