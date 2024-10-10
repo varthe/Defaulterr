@@ -156,7 +156,7 @@ const fetchUpdatedMediaItems = async (libraryId, lastUpdatedAt) => {
     const items = data?.MediaContainer?.Metadata || [];
 
     // Filter items updated after the last known updatedAt timestamp
-    return items.filter(item => new Date(item.updatedAt * 1000) > new Date(lastUpdatedAt));
+    return items.filter(item => item.updatedAt > lastUpdatedAt);
   } catch (error) {
     handleAxiosError(`fetching updated media for Library ID ${libraryId}`, error);
     return [];
@@ -214,7 +214,7 @@ const fetchStreamsForSeason = async (seasonId) => {
       const stream = await fetchStreamsForItem(episode.ratingKey);
       streams.push(stream);
       // Optional: Delay between fetching each episode to reduce load
-      await delay(50); // 50ms delay
+      await delay(100);
     }
     return streams;
   } catch (error) {
@@ -263,7 +263,7 @@ const fetchStreamsForLibrary = async (libraryName) => {
         const stream = await fetchStreamsForItem(item.ratingKey);
         streams.push(stream);
         // Optional: Delay between fetching each movie to reduce load
-        await delay(50); // 50ms delay
+        await delay(100); // 50ms delay
       } else if (type === "show") {
         const showStreams = await fetchStreamsForShow(item.ratingKey);
         streams.push(...showStreams);
@@ -368,7 +368,32 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters) => {
             `/library/parts/${stream.partId}?${queryParams.toString()}`,
             {},
             { headers: { "X-Plex-Token": token } }
-          );
+          )
+          .catch(async (error) => {
+            logger.error(`Error while posting update for user ${username} in group ${group}: ${error.message}. Retrying in 30 sec...`)
+            await delay(30000)
+            let responseStatus = ''
+            let attempt = 1;
+            while (responseStatus !== 200 && attempt < 10) {
+              await axiosInstance.post(
+                `/library/parts/${stream.partId}?${queryParams.toString()}`,
+                {},
+                { headers: { "X-Plex-Token": token } }
+              )
+              .then((response) => responseStatus = response.status)
+              .catch((error) => {
+                logger.error(`Attempt ${attempt}/10 failed with error: ${error.message}. Retrying in 30 sec...`)
+              })
+              if (responseStatus !== 200) {
+                attempt++
+                await delay(30000)
+              }
+            }
+            if (responseStatus !== 200) {
+              logger.error("All attemps failed. Exiting application.")
+              process.exit(1)
+            }
+          });
 
           const audioMessage = stream.audioStreamId ? `Audio ID ${stream.audioStreamId}` : "";
           const subtitleMessage = stream.subtitleStreamId ? `Subtitle ID ${stream.subtitleStreamId}` : "";
@@ -381,7 +406,7 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters) => {
         } catch (error) {
           handleAxiosError(`posting update for user '${username}' in group '${group}'`, error);
         }
-        await delay(50); // 50ms delay
+        await delay(100); // 50ms delay
       }
     }
   }
@@ -404,7 +429,7 @@ const identifyAndUpdateStreamsPerItem = async () => {
         await updateDefaultStreamsPerItem(updates, config.filters[libraryName]);
       }
       // Optional: Delay between processing each stream to reduce load
-      await delay(100); // 100ms delay
+      await delay(200); // 200ms delay
     }
   }
 };
@@ -568,7 +593,7 @@ app.post("/webhook", async (req, res) => {
           }
 
           // Optional: Delay between posting each update to reduce load
-          await delay(50); // 50ms delay
+          await delay(100); // 50ms delay
         }
       }
     }
