@@ -118,6 +118,7 @@ const setupCronJob = () => {
     logger.info(`Running scheduled partial run at ${new Date().toISOString()}`)
     await performPartialRun()
   })
+  logger.info("Cron job set up successfully")
 }
 
 // Fetch all libraries and map by ID
