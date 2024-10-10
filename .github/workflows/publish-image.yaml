@@ -17,7 +17,7 @@ jobs:
           docker login -u varthe -p ${{ secrets.DOCKER_HUB_TOKEN }}
           docker push varthe/defaulterr:latest
   publish_arm_image:
-    runs_on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v3
