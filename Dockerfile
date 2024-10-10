@@ -6,4 +6,4 @@ COPY . .
 EXPOSE 3189
 VOLUME /config
 VOLUME /logs
-CMD ["node","main.js","/config/config.yaml"]
+CMD ["node","main.js", "/logs/defaulterr.log", "/config/config.yaml", "/config/last_run_timestamps.json"]

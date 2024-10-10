@@ -16,3 +16,15 @@ jobs:
         run: |
           docker login -u varthe -p ${{ secrets.DOCKER_HUB_TOKEN }}
           docker push varthe/defaulterr:latest
+  publish_arm_image:
+    runs_on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: build
+        run: |
+          docker buildx build . -t varthe/defaulterr:arm64 --platform linux/arm64/v8
+      - name: publish
+        run: |
+          docker login -u varthe -p ${{ secrets.DOCKER_HUB_TOKEN }}
+          docker push varthe/defaulterr:arm64
