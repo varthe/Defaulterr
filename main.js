@@ -710,10 +710,11 @@ app.listen(PORT, async () => {
     await fetchAllUsersListedInFilters()
     await verifyTokens()
     await fetchAllLibraries()
-    setupCronJob()
 
     if (config.dry_run) await performDryRun()
     else if (config.partial_run_on_start) await performPartialRun()
+
+    setupCronJob()
   } catch (error) {
     logger.error(`Error initializing the application: ${error.message}`)
     process.exit(1)
