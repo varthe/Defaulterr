@@ -10,7 +10,7 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.Console(),
-        new winston.transports.File({ filename: '/logs/defaulterr.log'})
+        new winston.transports.File({ filename: process.argv[2] || './logs/defaulterr.log'})
     ]
 })
 

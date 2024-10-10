@@ -5,24 +5,19 @@ const Ajv = require('ajv');
 const ajv = new Ajv();
 
 // Path to YAML file
-const yamlFilePath = process.argv[2] || './config.yaml';
+const yamlFilePath = process.argv[3] || './config.yaml';
 
 // Define the updated validation schema
 const schema = {
   type: 'object',
   properties: {
-    plex_url: { type: 'string' },
+    plex_server_url: { type: 'string' },
     plex_owner_name: { type: 'string' },
     plex_owner_token: { type: 'string' },
     plex_client_identifier: {type: 'string' },
     dry_run: { type: 'boolean' },
-    full_run_on_start: { type: 'boolean' },
-    full_run_cron_expression: { type: 'string' },
-    process_batch_size: { type: 'integer', minimum: 1 },
-    process_batch_delay: { type: 'integer', minimum: 0 },
-    update_batch_size: { type: 'integer', minimum: 1 },
-    update_batch_delay: { type: 'integer', minimum: 0 },
-    timeout: { type: 'integer' },
+    partial_run_on_start: { type: 'boolean' },
+    partial_run_cron_expression: { type: 'string' },
     groups: {
       type: 'object',
       patternProperties: {
@@ -84,7 +79,7 @@ const schema = {
       }
     }
   },
-  required: ['plex_url', 'plex_owner_token', 'plex_client_identifier', 'groups', 'filters', 'process_batch_size', 'process_batch_delay', 'update_batch_size', 'update_batch_delay'],
+  required: ['plex_server_url', 'plex_owner_token', 'plex_client_identifier', 'groups', 'filters'],
   additionalProperties: false
 };
 

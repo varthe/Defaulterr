@@ -1,4 +1,6 @@
 const express = require("express");
+const fs = require("fs")
+const path = require("path")
 const axios = require("axios");
 const logger = require("./logger");
 const cron = require("node-cron");
@@ -15,10 +17,11 @@ app.use(express.json());
 const STREAM_TYPES = { video: 1, audio: 2, subtitles: 3 };
 const LIBRARIES = new Map();
 const USERS = new Map();
+const timestampsFile = path.join('./config', "last_run_timestamps.json");
 
 // Create an Axios instance with increased timeout and keep-alive
 const axiosInstance = axios.create({
-  baseURL: config.plex_url,
+  baseURL: config.plex_server_url,
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
@@ -89,7 +92,7 @@ const fetchAllUsersListedInFilters = async () => {
 const verifyTokens = async () => {
   for (const [username, token] of USERS.entries()) {
     try {
-      await axios.get(`${config.plex_url}/library/sections`, {
+      await axios.get(`${config.plex_server_url}/library/sections`, {
         headers: { "X-Plex-Token": token },
       });
       logger.info(`Validating token for user ${username}... Valid`);
@@ -104,12 +107,12 @@ const verifyTokens = async () => {
 
 // Setup Cron Job
 const setupCronJob = () => {
-  if (config.dry_run || !config.full_run_cron_expression) return;
-  if (!cronValidator.isValidCron(config.full_run_cron_expression))
-    throw new Error(`Invalid cron expression: ${config.full_run_cron_expression}`);
-  cron.schedule(config.full_run_cron_expression, async () => {
-    logger.info(`Running scheduled full run at ${new Date().toISOString()}`);
-    await performFullRun();
+  if (config.dry_run || !config.partial_run_cron_expression) return;
+  if (!cronValidator.isValidCron(config.partial_run_cron_expression))
+    throw new Error(`Invalid cron expression: ${config.partial_run_cron_expression}`);
+  cron.schedule(config.partial_run_cron_expression, async () => {
+    logger.info(`Running scheduled partial run at ${new Date().toISOString()}`);
+    await performPartialRun();
   });
 };
 
@@ -129,6 +132,34 @@ const fetchAllLibraries = async () => {
     logger.info("Fetched and mapped all relevant libraries.");
   } catch (error) {
     handleAxiosError("fetching libraries", error);
+  }
+};
+
+// Load last run timestamps from the file
+const loadLastRunTimestamps = () => {
+  if (fs.existsSync(timestampsFile)) {
+    const data = fs.readFileSync(timestampsFile, "utf-8");
+    return JSON.parse(data);
+  }
+  return {};
+};
+
+// Save the new last run timestamps to the file
+const saveLastRunTimestamps = (timestamps) => {
+  fs.writeFileSync(timestampsFile, JSON.stringify(timestamps, null, 2), "utf-8");
+};
+
+// Fetch media items that were updated after a specific timestamp
+const fetchUpdatedMediaItems = async (libraryId, lastUpdatedAt) => {
+  try {
+    const { data } = await axiosInstance.get(`/library/sections/${libraryId}/all`);
+    const items = data?.MediaContainer?.Metadata || [];
+
+    // Filter items updated after the last known updatedAt timestamp
+    return items.filter(item => new Date(item.updatedAt * 1000) > new Date(lastUpdatedAt));
+  } catch (error) {
+    handleAxiosError(`fetching updated media for Library ID ${libraryId}`, error);
+    return [];
   }
 };
 
@@ -378,24 +409,89 @@ const identifyAndUpdateStreamsPerItem = async () => {
   }
 };
 
-// Identify new streams to update for all libraries and groups
-const identifyNewStreamsForFullRun = async () => {
-  await identifyAndUpdateStreamsPerItem();
-};
-
 // Dry run to identify streams without applying updates
 const performDryRun = async () => {
   logger.info("STARTING DRY RUN. NO CHANGES WILL BE MADE.");
-  await identifyNewStreamsForFullRun();
+  await identifyAndUpdateStreamsPerItem();
   logger.info("DRY RUN COMPLETE.");
 };
 
-// Full run to update all streams per item
-const performFullRun = async () => {
-  logger.info("STARTING FULL RUN.");
-  await identifyNewStreamsForFullRun();
-  logger.info("FULL RUN COMPLETE.");
+// Partial run: process items updated since last run
+const performPartialRun = async () => {
+  logger.info("STARTING PARTIAL RUN.");
+
+  const lastRunTimestamps = loadLastRunTimestamps();
+  const newTimestamps = {};
+
+  for (const libraryName in config.filters) {
+      logger.info(`Processing library for partial run: ${libraryName}`);
+      const { id, type } = await fetchLibraryDetailsByName(libraryName);
+      if (!id || !type) {
+          logger.warn(`Library '${libraryName}' details are incomplete. Skipping.`);
+          continue;
+      }
+      const lastUpdatedAt = lastRunTimestamps[libraryName] || 0;
+
+      // Fetch updated media items based on updatedAt timestamp
+      const updatedItems = await fetchUpdatedMediaItems(id, lastUpdatedAt);
+
+      if (type === "movie") {
+          for (const item of updatedItems) {
+              const stream = await fetchStreamsForItem(item.ratingKey);
+              const groupFilters = config.filters[libraryName];
+              const newStreams = [];
+
+              for (const group in groupFilters) {
+                  const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group]);
+                  if (matchedStreams.length > 0) {
+                      newStreams.push(...matchedStreams);
+                  }
+              }
+
+              if (newStreams.length > 0) {
+                  await updateDefaultStreamsPerItem(newStreams, config.filters[libraryName]);
+              }
+
+              // Optional: Delay between processing each item to reduce load
+              await delay(100); // 100ms delay
+          }
+      } else if (type === "show") {
+          for (const item of updatedItems) {
+              const showStreams = await fetchStreamsForShow(item.ratingKey);
+              for (const stream of showStreams) {
+                  const groupFilters = config.filters[libraryName];
+                  const newStreams = [];
+
+                  for (const group in groupFilters) {
+                      const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group]);
+                      if (matchedStreams.length > 0) {
+                          newStreams.push(...matchedStreams);
+                      }
+                  }
+
+                  if (newStreams.length > 0 && !config.dry_run) {
+                      await updateDefaultStreamsPerItem(newStreams, config.filters[libraryName]);
+                  }
+
+                  // Optional: Delay between processing each stream to reduce load
+                  await delay(100); // 100ms delay
+              }
+          }
+      }
+
+      // Update the timestamp for the current library
+      if (updatedItems.length > 0) {
+          const latestUpdatedAt = Math.max(...updatedItems.map(item => item.updatedAt));
+          newTimestamps[libraryName] = latestUpdatedAt;
+      }
+  }
+
+  // Save the updated timestamps for future runs
+  saveLastRunTimestamps({ ...lastRunTimestamps, ...newTimestamps });
+
+  logger.info("PARTIAL RUN COMPLETE.");
 };
+
 
 // Tautulli webhook for new items
 app.post("/webhook", async (req, res) => {
@@ -508,7 +604,7 @@ app.listen(PORT, async () => {
     setupCronJob();
 
     if (config.dry_run) await performDryRun();
-    else if (config.full_run_on_start) await performFullRun();
+    else if (config.partial_run_on_start) await performPartialRun();
   } catch (error) {
     logger.error(`Error initializing the application: ${error.message}`);
     process.exit(1);
