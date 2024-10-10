@@ -17,7 +17,7 @@ app.use(express.json());
 const STREAM_TYPES = { video: 1, audio: 2, subtitles: 3 };
 const LIBRARIES = new Map();
 const USERS = new Map();
-const timestampsFile = path.join('./config', "last_run_timestamps.json");
+const timestampsFile = path.join(process.argv[3] || './config', "last_run_timestamps.json");
 
 // Create an Axios instance with increased timeout and keep-alive
 const axiosInstance = axios.create({
