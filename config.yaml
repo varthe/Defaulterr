@@ -1,29 +1,20 @@
-
 # REQUIRED
-plex_url: ''
-plex_owner_name: '' # To include owner in groups
-plex_owner_token: ''
-plex_client_identifier: '' # See README on how to obtain
+plex_server_url: ""
+plex_owner_name: "" # To include owner in groups. Use this value in place of username
+plex_owner_token: ""
+plex_client_identifier: "" # See README on how to obtain
 # REQUIRED END
 
 # RUN SETTINGS
-# WARNING: Full runs can take a while to complete
-dry_run: True # Do a test run without updating. Useful to test filters before commiting
-full_run_on_start: False # Update every item in all libraries using the filters when the applicacation is ran. Recommended to only run ONCE and set up a webhook for new media
-full_run_cron_expression: '' # To do a full run at an interval or time of day. See: https://crontab.guru/
-# RUN SETTINGS END
+# DRY RUN: For testing filters. Won't update users. Recommended to run a few times to make sure filters work. Overwrites the other run settings.
+dry_run: True
 
-# BATCH SETTINGS
-# WARNING: Changing these values can cause unexpected errors. Increase batch_size and reduce batch_delay to speed up but use more CPU
-# Processing streams
-process_batch_size: 5
-process_batch_delay: 500
-# Updating users
-update_batch_size: 50
-update_batch_delay: 100
-# Timeout
-timeout: 300000 # Defaults to 5 min. Increase for larger libraries
-# BATCH SETTINGS END
+# PARTIAL RUN: Updates any new media added since the last run.
+# WARNING: The first run will take a LONG time (updates all existing media). Subsequent runs will be faster.
+# The Tautulli webhook will update new media as it's added. This will run on a schedule using a cron expression as an alternative to the webhook. I recommend only using one of the two.
+partial_run_on_start: False
+partial_run_cron_expression: "" # E.g '0 3 * * *' to run everyday at 3:00 am. See https://crontab.guru/
+# RUN SETTINGS END
 
 # GROUPS
 # List usernames EXACTLY like they appear in Plex. Include capital letters and special characters
@@ -31,17 +22,17 @@ timeout: 300000 # Defaults to 5 min. Increase for larger libraries
 groups:
   serialTranscoders: # Can be named anything
     - varthe
-    - UserWithCapitalLetters # EXACTLY like in plex INCLUDING capital letters.
+    - UserWithCapitalLetters # EXACTLY like Plex
+    - user3
     # - $ALL
   subtitleEnjoyers: # Can be named anything
-    - user1
-    - user2
+    - varthe
   deafPeople: # Can be named anything
-    - user2
-    - user3
+    - varthe
   weebs: # Can be named anything
-    - user3
+    - varthe
     - user4
+
 # GROUPS END
 
 # FILTERS
@@ -58,6 +49,7 @@ filters:
         # Audio Filter 2 - Any English track (fallback if the above filter doesn't match)
         - include:
             language: English
+    subtitleEnjoyers: # Group name
       subtitles:
         # Subtitle Filter 1- First English track that's not forced
         - include:
@@ -70,15 +62,20 @@ filters:
         - include:
             language: English
             extendedDisplayTitle: sdh
-  Anime: # Library name
-    weebs: # Group name
+  Anime:
+    weebs:
       audio:
         - include:
             languageCode: jpn # Japanese
       subtitles:
+        # Full subtitles -> Dialogue subtitles -> Anything without the word "signs"
+        - include:
+            language: English
+            extendedDisplayTitle: full
+        - include:
+            language: English
+            extendedDisplayTitle: dialogue
         - include:
             language: English
           exclude:
             extendedDisplayTitle: signs
-
-
