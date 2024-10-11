@@ -8,7 +8,7 @@ Change the default audio stream for items in Plex per user based on the codec, l
 ```
 services:
   defaulterr:
-    image: varthe/defaulterr
+    image: varthe/defaulterr:latest
     container_name: defaulterr
     hostname: defaulterr
     ports: 
