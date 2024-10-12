@@ -488,17 +488,50 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
 // Identify streams for dry run
 const identifyStreamsForDryRun = async () => {
   for (const libraryName in config.filters) {
-    logger.info(`Processing library: ${libraryName}`)
-    const libraryStreams = await fetchStreamsForLibrary(libraryName)
-    for (const stream of libraryStreams) {
-      for (const group in config.filters[libraryName]) {
-        const newStreams = await identifyStreamsToUpdate(
-          [stream],
-          config.filters[libraryName][group]
-        )
+    logger.info(`Processing library for dry run: ${libraryName}`)
+    const { id, type } = await fetchLibraryDetailsByName(libraryName)
+    if (!id || !type) {
+      logger.warn(`Library '${libraryName}' details are incomplete. Skipping.`)
+      continue
+    }
+    const updatedItems = await fetchUpdatedMediaItems(id, 0)
+
+    if (type === "movie") {
+      for (const item of updatedItems) {
+        const stream = await fetchStreamsForItem(item.ratingKey)
+        const groupFilters = config.filters[libraryName]
+        const newStreams = {}
+
+        for (const group in groupFilters) {
+          const matchedStreams = await identifyStreamsToUpdate(
+            [stream],
+            groupFilters[group]
+          )
+          if (matchedStreams.length > 0) {
+            newStreams[group] = matchedStreams
+          }
+        }
+        await delay(100)
       }
-      // Optional: Delay between processing each stream to reduce load
-      await delay(200) // 200ms delay
+    } else if (type === "show") {
+      for (const item of updatedItems) {
+        const showStreams = await fetchStreamsForShow(item.ratingKey)
+        for (const stream of showStreams) {
+          const groupFilters = config.filters[libraryName]
+          const newStreams = {}
+
+          for (const group in groupFilters) {
+            const matchedStreams = await identifyStreamsToUpdate(
+              [stream],
+              groupFilters[group]
+            )
+            if (matchedStreams.length > 0) {
+              newStreams[group] = matchedStreams
+            }
+          }
+          await delay(100)
+        }
+      }
     }
   }
 }
