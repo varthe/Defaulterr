@@ -91,20 +91,43 @@ const fetchAllUsersListedInFilters = async () => {
 }
 
 // Verify each token can access the API endpoint
-const verifyTokens = async () => {
-  for (const [username, token] of USERS.entries()) {
-    try {
-      await axios.get(`${config.plex_server_url}/library/sections`, {
-        headers: { "X-Plex-Token": token },
-      })
-      logger.info(`Validating token for user ${username}... Valid`)
-    } catch (error) {
-      handleAxiosError(`validating token for user ${username}`, error)
-      process.exit(1)
+const fetchUsersWithAccess = async (libraryName) => {
+  const { id } = await fetchLibraryDetailsByName(libraryName)
+  const usersWithAccess = new Map()
+  const groups = config.filters[libraryName]
+
+  for (const group in groups) {
+    let usernames = config.groups[group]
+    let users = []
+    if (usernames.includes("$ALL")) {
+      usernames = [...USERS.keys()] // All users
     }
-    // Optional: Delay between token verifications to reduce load
-    await delay(100) // 100ms delay
+    for (const username of usernames) {
+      const token = USERS.get(username)
+      await axios
+        .get(`${config.plex_server_url}/library/sections/${id}`, {
+          headers: { "X-Plex-Token": token },
+        })
+        .then((response) => {
+          if (response.status === 200) {
+            logger.info(
+              `Checking if user ${username} of group ${group} has access to library ${libraryName}... OK`
+            )
+            users.push(username)
+          } else {
+            throw new Error("No access")
+          }
+        })
+        .catch((error) => {
+          logger.warn(
+            `User ${username} of group ${group} has no access to library ${libraryName}. They will be skipped during updates. ${error.message}`
+          )
+        })
+      await delay(100)
+    }
+    usersWithAccess.set(group, users)
   }
+  return usersWithAccess
 }
 
 // Setup Cron Job
@@ -376,25 +399,22 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 }
 
 // Update default streams for a single item across all relevant users
-const updateDefaultStreamsPerItem = async (streamsToUpdate, filters) => {
-  for (const stream of streamsToUpdate) {
-    for (const group in filters) {
-      let usernames = config.groups[group] || []
-      if (usernames.includes("$ALL")) usernames = [...USERS.keys()]
+const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
+  for (const group in streamsToUpdate) {
+    for (const stream of streamsToUpdate[group]) {
+      const usernames = users.get(group)
       if (usernames.length === 0) {
         logger.warn(`No users found in group '${group}'. Skipping update.`)
         continue
       }
-
       for (const username of usernames) {
         const token = USERS.get(username)
         if (!token) {
           logger.warn(
-            `No access token found for user '${username}'. Skipping update.`
+            `No access token found for user ${username}. Skipping update.`
           )
           continue
         }
-
         const queryParams = new URLSearchParams()
         if (stream.audioStreamId)
           queryParams.append("audioStreamID", stream.audioStreamId)
@@ -465,27 +485,53 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters) => {
   }
 }
 
-// Identify new streams and update them one by one per item for each user
-const identifyAndUpdateStreamsPerItem = async () => {
+// Identify streams for dry run
+const identifyStreamsForDryRun = async () => {
   for (const libraryName in config.filters) {
-    logger.info(`Processing library: ${libraryName}`)
-    const libraryStreams = await fetchStreamsForLibrary(libraryName)
-    for (const stream of libraryStreams) {
-      const updates = []
-      for (const group in config.filters[libraryName]) {
-        const newStreams = await identifyStreamsToUpdate(
-          [stream],
-          config.filters[libraryName][group]
-        )
-        if (newStreams.length > 0) {
-          updates.push(...newStreams)
+    logger.info(`Processing library for dry run: ${libraryName}`)
+    const { id, type } = await fetchLibraryDetailsByName(libraryName)
+    if (!id || !type) {
+      logger.warn(`Library '${libraryName}' details are incomplete. Skipping.`)
+      continue
+    }
+    const updatedItems = await fetchUpdatedMediaItems(id, 0)
+
+    if (type === "movie") {
+      for (const item of updatedItems) {
+        const stream = await fetchStreamsForItem(item.ratingKey)
+        const groupFilters = config.filters[libraryName]
+        const newStreams = {}
+
+        for (const group in groupFilters) {
+          const matchedStreams = await identifyStreamsToUpdate(
+            [stream],
+            groupFilters[group]
+          )
+          if (matchedStreams.length > 0) {
+            newStreams[group] = matchedStreams
+          }
+        }
+        await delay(100)
+      }
+    } else if (type === "show") {
+      for (const item of updatedItems) {
+        const showStreams = await fetchStreamsForShow(item.ratingKey)
+        for (const stream of showStreams) {
+          const groupFilters = config.filters[libraryName]
+          const newStreams = {}
+
+          for (const group in groupFilters) {
+            const matchedStreams = await identifyStreamsToUpdate(
+              [stream],
+              groupFilters[group]
+            )
+            if (matchedStreams.length > 0) {
+              newStreams[group] = matchedStreams
+            }
+          }
+          await delay(100)
         }
       }
-      if (updates.length > 0 && !config.dry_run) {
-        await updateDefaultStreamsPerItem(updates, config.filters[libraryName])
-      }
-      // Optional: Delay between processing each stream to reduce load
-      await delay(200) // 200ms delay
     }
   }
 }
@@ -493,7 +539,7 @@ const identifyAndUpdateStreamsPerItem = async () => {
 // Dry run to identify streams without applying updates
 const performDryRun = async () => {
   logger.info("STARTING DRY RUN. NO CHANGES WILL BE MADE.")
-  await identifyAndUpdateStreamsPerItem()
+  await identifyStreamsForDryRun()
   logger.info("DRY RUN COMPLETE.")
 }
 
@@ -516,11 +562,18 @@ const performPartialRun = async () => {
     // Fetch updated media items based on updatedAt timestamp
     const updatedItems = await fetchUpdatedMediaItems(id, lastUpdatedAt)
 
+    const usersWithAccess = await fetchUsersWithAccess(libraryName)
+
+    if (![...usersWithAccess.values()].some((users) => users.length > 0)) {
+      logger.warn(`No users have access to library ${libraryName}. Skipping`)
+      continue
+    }
+
     if (type === "movie") {
       for (const item of updatedItems) {
         const stream = await fetchStreamsForItem(item.ratingKey)
         const groupFilters = config.filters[libraryName]
-        const newStreams = []
+        const newStreams = {}
 
         for (const group in groupFilters) {
           const matchedStreams = await identifyStreamsToUpdate(
@@ -528,14 +581,15 @@ const performPartialRun = async () => {
             groupFilters[group]
           )
           if (matchedStreams.length > 0) {
-            newStreams.push(...matchedStreams)
+            newStreams[group] = matchedStreams
           }
         }
 
-        if (newStreams.length > 0) {
+        if (Object.keys(newStreams).length > 0) {
           await updateDefaultStreamsPerItem(
             newStreams,
-            config.filters[libraryName]
+            config.filters[libraryName],
+            usersWithAccess
           )
         }
 
@@ -547,7 +601,7 @@ const performPartialRun = async () => {
         const showStreams = await fetchStreamsForShow(item.ratingKey)
         for (const stream of showStreams) {
           const groupFilters = config.filters[libraryName]
-          const newStreams = []
+          const newStreams = {}
 
           for (const group in groupFilters) {
             const matchedStreams = await identifyStreamsToUpdate(
@@ -555,14 +609,15 @@ const performPartialRun = async () => {
               groupFilters[group]
             )
             if (matchedStreams.length > 0) {
-              newStreams.push(...matchedStreams)
+              newStreams[group] = matchedStreams
             }
           }
 
-          if (newStreams.length > 0 && !config.dry_run) {
+          if (Object.keys(newStreams).length > 0) {
             await updateDefaultStreamsPerItem(
               newStreams,
-              config.filters[libraryName]
+              config.filters[libraryName],
+              usersWithAccess
             )
           }
 
@@ -603,6 +658,8 @@ app.post("/webhook", async (req, res) => {
       )
       return res.status(200).send("Event not relevant")
     }
+
+    const usersWithAccess = await fetchUsersWithAccess(libraryName)
     const filters = config.filters[libraryName]
 
     let streams = [] // Need arrays for identifyStreamsToUpdate
@@ -626,8 +683,7 @@ app.post("/webhook", async (req, res) => {
     }
 
     for (const { group, newStreams } of updates) {
-      let usernames = config.groups[group] || []
-      if (usernames.includes("$ALL")) usernames = [...USERS.keys()]
+      let usernames = usersWithAccess.get(group)
       if (usernames.length === 0) {
         logger.warn(`No users found in group '${group}'. Skipping update.`)
         continue
@@ -709,7 +765,6 @@ app.listen(PORT, async () => {
     }
 
     await fetchAllUsersListedInFilters()
-    await verifyTokens()
     await fetchAllLibraries()
 
     if (config.dry_run) await performDryRun()

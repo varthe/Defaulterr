@@ -1,64 +1,54 @@
 # REQUIRED
 plex_server_url: ""
-plex_owner_name: "" # To include owner in groups. Use this value in place of username
+plex_owner_name: ""  # Use this value in place of username to include the owner in groups
 plex_owner_token: ""
-plex_client_identifier: "" # See README on how to obtain
+plex_client_identifier: ""  # See README on how to obtain
 # REQUIRED END
 
 # RUN SETTINGS
-# DRY RUN: For testing filters. Won't update users. Recommended to run a few times to make sure filters work. Overwrites the other run settings.
-dry_run: True
+dry_run: True  # For testing filters; won't update users. Recommended to test a few times to ensure filters work.
 
-# PARTIAL RUN: Updates any new media added since the last run.
-# WARNING: The first run will take a LONG time (updates all existing media). Subsequent runs will be faster.
-# The Tautulli webhook will update new media as it's added. This will run on a schedule using a cron expression as an alternative to the webhook. I recommend only using one of the two.
+# PARTIAL RUN: Updates newly added media since the last run.
+# WARNING: The first run will update all existing media. Subsequent runs will be faster.
 partial_run_on_start: False
-partial_run_cron_expression: "" # E.g '0 3 * * *' to run everyday at 3:00 am. See https://crontab.guru/
+partial_run_cron_expression: ""  # E.g., '0 3 * * *' to run every day at 3:00 am. See crontab.guru
 # RUN SETTINGS END
 
 # GROUPS
-# List usernames EXACTLY like they appear in Plex. Include capital letters and special characters
-# Optionally use $ALL in place of username to include ALL users from your server
 groups:
-  serialTranscoders: # Can be named anything
+  serialTranscoders:
     - varthe
-    - UserWithCapitalLetters # EXACTLY like Plex
+    - UserWithCapitalLetters
     - user3
-    # - $ALL
-  subtitleEnjoyers: # Can be named anything
+  subtitleEnjoyers:
     - varthe
-  deafPeople: # Can be named anything
+  deafPeople:
     - varthe
-  weebs: # Can be named anything
+  weebs:
     - varthe
     - user4
-
 # GROUPS END
 
 # FILTERS
 filters:
-  Movies: # Library name
-    serialTranscoders: # Group name
+  Movies:  # Library name
+    serialTranscoders:
       audio:
-        # Audio Filter 1 - First English audio track that's not TRUEHD and not a commentary
         - include:
             language: English
           exclude:
             codec: truehd
-            extendedDisplayTitle: commentary # Checks whether the word "commentary" is present
-        # Audio Filter 2 - Any English track (fallback if the above filter doesn't match)
+            extendedDisplayTitle: commentary
         - include:
             language: English
-    subtitleEnjoyers: # Group name
+    subtitleEnjoyers:
       subtitles:
-        # Subtitle Filter 1- First English track that's not forced
         - include:
             language: English
           exclude:
             extendedDisplayTitle: forced
-    deafPeople: # Group name
+    deafPeople:
       subtitles:
-        # Subtitle Filter 1 - First English SDH track
         - include:
             language: English
             extendedDisplayTitle: sdh
@@ -66,9 +56,8 @@ filters:
     weebs:
       audio:
         - include:
-            languageCode: jpn # Japanese
+            languageCode: jpn  # Japanese
       subtitles:
-        # Full subtitles -> Dialogue subtitles -> Anything without the word "signs"
         - include:
             language: English
             extendedDisplayTitle: full
