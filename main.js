@@ -6,8 +6,6 @@ const cron = require("node-cron")
 const cronValidator = require("cron-validator")
 const xml2js = require("xml2js")
 const loadAndValidateYAML = require("./configBuilder")
-const http = require("http")
-const https = require("https")
 
 const config = loadAndValidateYAML()
 const app = express()
@@ -24,9 +22,7 @@ const axiosInstance = axios.create({
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
-  timeout: config.timeout || 3600000, // Set to 1 hour by default
-  httpAgent: new http.Agent({ keepAlive: true }),
-  httpsAgent: new https.Agent({ keepAlive: true }),
+  timeout: 600000,
 })
 
 // Utility to handle error logging
