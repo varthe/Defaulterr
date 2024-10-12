@@ -29,9 +29,9 @@ groups:
     - user4
 # GROUPS END
 
-# FILTERS
+# FILTERS - See README for explanation
 filters:
-  Movies:  # Library name
+  Movies:
     serialTranscoders:
       audio:
         - include:
