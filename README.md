@@ -1,6 +1,6 @@
 # Defaulterr
 
-Change the default audio and subtitle streams for items in Plex per user based on codec, language, keywords, and more. Customizable with filters and groups. Can run on a schedule or for newly added items using a Tautulli webhook.
+Change the default audio and subtitle streams for items in Plex per user based on codec, language, keywords and more. Customizable with filters and groups. Can run on a schedule or for newly added items using a Tautulli webhook.
 
 ## Getting Started
 
