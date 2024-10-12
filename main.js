@@ -6,8 +6,6 @@ const cron = require("node-cron")
 const cronValidator = require("cron-validator")
 const xml2js = require("xml2js")
 const loadAndValidateYAML = require("./configBuilder")
-const http = require("http")
-const https = require("https")
 
 const config = loadAndValidateYAML()
 const app = express()
@@ -24,9 +22,7 @@ const axiosInstance = axios.create({
   headers: {
     "X-Plex-Token": config.plex_owner_token,
   },
-  timeout: config.timeout || 3600000, // Set to 1 hour by default
-  httpAgent: new http.Agent({ keepAlive: true }),
-  httpsAgent: new https.Agent({ keepAlive: true }),
+  timeout: 600000,
 })
 
 // Utility to handle error logging
@@ -201,22 +197,41 @@ const fetchUpdatedMediaItems = async (libraryId, lastUpdatedAt) => {
 }
 
 // Optimized evaluateStream function using .some
-const evaluateStream = (stream, filters) => {
-  return filters.every(({ include = {}, exclude = {} }) => {
-    // Check 'include' conditions
-    const includesFail = Object.keys(include).some((field) => {
-      const streamValue = stream[field]?.toLowerCase()
-      return !streamValue || !streamValue.includes(include[field].toLowerCase())
-    })
-    if (includesFail) return false
+const evaluateStreams = (streams, filters) => {
+  for (const filter of Object.values(filters)) {
+    const { include, exclude } = filter
 
-    // Check 'exclude' conditions
-    const excludesFail = Object.keys(exclude).some((field) => {
-      const streamValue = stream[field]?.toLowerCase()
-      return streamValue?.includes(exclude[field].toLowerCase())
+    const defaultStream = streams.find((stream) => {
+      // Check 'include' first
+      if (
+        include &&
+        Object.entries(include).some(([field, value]) => {
+          const streamValue = stream[field]?.toString().toLowerCase()
+          return (
+            !streamValue ||
+            !streamValue.includes(value.toString().toLowerCase())
+          )
+        })
+      ) {
+        return false
+      }
+
+      // Check 'exclude'
+      if (
+        exclude &&
+        Object.entries(exclude).some(([field, value]) => {
+          const streamValue = stream[field]?.toString().toLowerCase()
+          return streamValue?.includes(value.toString().toLowerCase())
+        })
+      ) {
+        return false
+      }
+
+      return true
     })
-    return !excludesFail
-  })
+
+    if (defaultStream) return defaultStream
+  }
 }
 
 // Fetch streams for a specific media item (movie or episode)
@@ -350,11 +365,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
       const partUpdate = { partId: part.partId }
 
       if (filters.audio) {
-        const audioStream = part.streams.find(
-          (stream) =>
-            stream.streamType === STREAM_TYPES.audio &&
-            evaluateStream(stream, filters.audio)
+        const audioStreams = part.streams.filter(
+          (stream) => stream.streamType === STREAM_TYPES.audio
         )
+        const audioStream = evaluateStreams(audioStreams, filters.audio)
+
         if (audioStream) {
           logger.info(
             `Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`
@@ -368,10 +383,12 @@ const identifyStreamsToUpdate = async (parts, filters) => {
       }
 
       if (filters.subtitles) {
-        const subtitleStream = part.streams.find(
-          (stream) =>
-            stream.streamType === STREAM_TYPES.subtitles &&
-            evaluateStream(stream, filters.subtitles)
+        const subtitleStreams = part.streams.filter(
+          (stream) => stream.streamType === STREAM_TYPES.subtitles
+        )
+        const subtitleStream = evaluateStreams(
+          subtitleStreams,
+          filters.subtitles
         )
         if (subtitleStream) {
           logger.info(
