@@ -19,7 +19,7 @@ groups:
   serialTranscoders:
     - varthe
     - UserWithCapitalLetters
-    - user3
+    - $ALL # Will grab all users with access to the library
   subtitleEnjoyers:
     - varthe
   deafPeople:
