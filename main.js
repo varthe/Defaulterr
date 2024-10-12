@@ -491,15 +491,11 @@ const identifyStreamsForDryRun = async () => {
     logger.info(`Processing library: ${libraryName}`)
     const libraryStreams = await fetchStreamsForLibrary(libraryName)
     for (const stream of libraryStreams) {
-      const updates = []
       for (const group in config.filters[libraryName]) {
         const newStreams = await identifyStreamsToUpdate(
           [stream],
           config.filters[libraryName][group]
         )
-        if (newStreams.length > 0) {
-          updates.push(...newStreams)
-        }
       }
       // Optional: Delay between processing each stream to reduce load
       await delay(200) // 200ms delay
