@@ -601,7 +601,7 @@ const performPartialRun = async () => {
         const showStreams = await fetchStreamsForShow(item.ratingKey)
         for (const stream of showStreams) {
           const groupFilters = config.filters[libraryName]
-          const newStreams = []
+          const newStreams = {}
 
           for (const group in groupFilters) {
             const matchedStreams = await identifyStreamsToUpdate(
