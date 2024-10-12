@@ -400,23 +400,21 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
 // Update default streams for a single item across all relevant users
 const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
-  for (const stream of streamsToUpdate) {
-    for (const group in filters) {
-      let usernames = users.get(group)
+  for (const group in streamsToUpdate) {
+    for (const stream of streamsToUpdate[group]) {
+      const usernames = users.get(group)
       if (usernames.length === 0) {
         logger.warn(`No users found in group '${group}'. Skipping update.`)
         continue
       }
-
       for (const username of usernames) {
         const token = USERS.get(username)
         if (!token) {
           logger.warn(
-            `No access token found for user '${username}'. Skipping update.`
+            `No access token found for user ${username}. Skipping update.`
           )
           continue
         }
-
         const queryParams = new URLSearchParams()
         if (stream.audioStreamId)
           queryParams.append("audioStreamID", stream.audioStreamId)
@@ -546,7 +544,7 @@ const performPartialRun = async () => {
       for (const item of updatedItems) {
         const stream = await fetchStreamsForItem(item.ratingKey)
         const groupFilters = config.filters[libraryName]
-        const newStreams = []
+        const newStreams = {}
 
         for (const group in groupFilters) {
           const matchedStreams = await identifyStreamsToUpdate(
@@ -554,11 +552,11 @@ const performPartialRun = async () => {
             groupFilters[group]
           )
           if (matchedStreams.length > 0) {
-            newStreams.push(...matchedStreams)
+            newStreams[group] = matchedStreams
           }
         }
 
-        if (newStreams.length > 0) {
+        if (Object.keys(newStreams).length > 0) {
           await updateDefaultStreamsPerItem(
             newStreams,
             config.filters[libraryName],
@@ -582,11 +580,11 @@ const performPartialRun = async () => {
               groupFilters[group]
             )
             if (matchedStreams.length > 0) {
-              newStreams.push(...matchedStreams)
+              newStreams[group] = matchedStreams
             }
           }
 
-          if (newStreams.length > 0 && !config.dry_run) {
+          if (Object.keys(newStreams).length > 0) {
             await updateDefaultStreamsPerItem(
               newStreams,
               config.filters[libraryName],
