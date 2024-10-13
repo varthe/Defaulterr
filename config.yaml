@@ -50,8 +50,7 @@ filters:
     deafPeople:
       subtitles:
         - include:
-            language: English
-            extendedDisplayTitle: sdh
+            hearingImpaired: true # SDH
   Anime:
     weebs:
       audio:
