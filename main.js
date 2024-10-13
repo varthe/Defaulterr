@@ -79,6 +79,17 @@ const fetchAllUsersListedInFilters = async () => {
         USERS.set(user.username, user.accessToken)
       }
     })
+
+    const managedUsers = config.managed_users
+    if (managedUsers) {
+      Object.keys(managedUsers).forEach((user) => {
+        const token = managedUsers[user]
+        if (user && token) {
+          USERS.set(user, token)
+        }
+      })
+      logger.info(`Finished processing managed users`)
+    }
     logger.info("Fetched and stored user details successfully.")
   } catch (error) {
     handleAxiosError("fetching users from server", error)
@@ -447,7 +458,11 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
             )
             .catch(async (error) => {
               logger.error(
-                `Error while posting update for user ${username} in group ${group}: ${error.message}. Retrying in 30 sec...`
+                `Error while posting update for user ${username} in group ${group}${
+                  error.status === 403
+                    ? ". This could be because of age ratings, ensure they can access ALL items in the library"
+                    : ""
+                }: ${error.message}. Retrying in 30 sec...`
               )
               await delay(30000)
               let responseStatus = ""

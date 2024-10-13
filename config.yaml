@@ -1,18 +1,24 @@
 # REQUIRED
 plex_server_url: ""
-plex_owner_name: ""  # Use this value in place of username to include the owner in groups
+plex_owner_name: "" # Use this value in place of username to include the owner in groups
 plex_owner_token: ""
-plex_client_identifier: ""  # See README on how to obtain
+plex_client_identifier: "" # See README on how to obtain
 # REQUIRED END
 
 # RUN SETTINGS
-dry_run: True  # For testing filters; won't update users. Recommended to test a few times to ensure filters work.
+dry_run: True # For testing filters; won't update users. Recommended to test a few times to ensure filters work.
 
 # PARTIAL RUN: Updates newly added media since the last run.
 # WARNING: The first run will update all existing media. Subsequent runs will be faster.
 partial_run_on_start: False
-partial_run_cron_expression: ""  # E.g., '0 3 * * *' to run every day at 3:00 am. See crontab.guru
+partial_run_cron_expression: "" # E.g., '0 3 * * *' to run every day at 3:00 am. See crontab.guru
 # RUN SETTINGS END
+
+# MANAGED ACCOUNTS (optional)
+# managed_users:
+#   user1: token
+#   user2: token
+# MANAGED USERS END
 
 # GROUPS
 groups:
@@ -50,12 +56,12 @@ filters:
     deafPeople:
       subtitles:
         - include:
-            hearingImpaired: true # SDH
+            extendedDisplayTitle: sdh
   Anime:
     weebs:
       audio:
         - include:
-            languageCode: jpn  # Japanese
+            languageCode: jpn # Japanese
       subtitles:
         - include:
             language: English
