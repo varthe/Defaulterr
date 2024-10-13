@@ -665,6 +665,10 @@ const performPartialRun = async () => {
         ...updatedItems.map((item) => item.updatedAt)
       )
       newTimestamps[libraryName] = latestUpdatedAt
+    } else {
+      logger.info(
+        `No changes detected in library ${libraryName} since the last run`
+      )
     }
   }
 
