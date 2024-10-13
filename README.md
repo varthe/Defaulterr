@@ -104,7 +104,7 @@ filters:
         # Subtitle Filter 1 - First English SDH track
         - include:
             language: English
-            extendedDisplayTitle: sdh
+            hearingImpaired: true # SDH
   Anime: # Library name
     weebs: # Group name
       audio:
