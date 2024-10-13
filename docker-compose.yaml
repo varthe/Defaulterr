@@ -1,9 +1,9 @@
 services:
   defaulterr:
-    image: varthe/defaulterr
+    image: varthe/defaulterr:latest
     container_name: defaulterr
     hostname: defaulterr
-    ports: 
+    ports:
       - 3184:3184
     volumes:
       - /path/to/config:/config
