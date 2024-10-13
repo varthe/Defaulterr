@@ -18,6 +18,10 @@ const schema = {
     dry_run: { type: "boolean" },
     partial_run_on_start: { type: "boolean" },
     partial_run_cron_expression: { type: "string" },
+    managed_users: {
+      type: "object",
+      additionalProperties: { type: "string" },
+    },
     groups: {
       type: "object",
       patternProperties: {

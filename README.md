@@ -48,6 +48,7 @@ See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml) fo
 Groups define collections of users with shared filters:
 
 - Usernames must match **exactly** as they appear in Plex, including capitalization and special characters.
+- Managed accounts require additional setup. Read below.
 - Optionally, use `$ALL` in place of a username to include all users from your server.
 
 Example:
@@ -64,6 +65,19 @@ groups:
     - varthe
   weebs: # Can be named anything
     - varthe
+```
+
+#### MANAGED ACCOUNTS (optional)
+
+To include managed accounts in groups you will need to supply their tokens manually.
+See this [comment](https://www.reddit.com/r/PleX/comments/18ihi91/comment/kddct4k/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button) by Blind_Watchman on how to obtain their tokens. You have to do it like this because the regular tokens won't work.
+
+Include them in the config file like below. Use the key (e.g `user1`) in groups.
+
+```yaml
+managed_users:
+  user1: token
+  user2: token
 ```
 
 #### FILTERS
@@ -138,7 +152,7 @@ To automate filter applications for newly added items:
 7. Enable the **Recently Added** trigger.
 8. Paste the following JSON data into **JSON Data**:
 
-```json
+```
 <movie>
 {
   "type": "movie",
