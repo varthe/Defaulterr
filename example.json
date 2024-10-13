@@ -1,3 +1,25 @@
+/**
+ * Audio
+ */
+
+// English AAC
+{
+  "id": 1234,
+  "streamType": 2,
+  "default": true,
+  "codec": "aac",
+  "index": 1,
+  "channels": 6,
+  "language": "English",
+  "languageTag": "en",
+  "languageCode": "eng",
+  "profile": "lc",
+  "samplingRate": 48000,
+  "displayTitle": "English (AAC 5.1)",
+  "extendedDisplayTitle": "English (AAC 5.1)"
+}
+
+ // Japanese OPUS
 {
   "id": 36834,
   "streamType": 2,
@@ -15,19 +37,43 @@
   "title": "Opus 2.0 @ 121 kb/s",
   "displayTitle": "日本語 (OPUS Stereo)",
   "extendedDisplayTitle": "Opus 2.0 @ 121 kb/s (日本語)"
-},
-{
-  "id": 1234,
-  "streamType": 2,
-  "default": true,
-  "codec": "aac",
-  "index": 1,
-  "channels": 6,
+}
+
+/**
+ * Subtitles
+ */
+
+ // English PGS SDH
+ {
+  "id": 23643,
+  "streamType": 3,
+  "canAutoSync": false,
+  "codec": "pgs",
+  "index": 6,
+  "bitrate": 44,
   "language": "English",
   "languageTag": "en",
   "languageCode": "eng",
-  "profile": "lc",
-  "samplingRate": 48000,
-  "displayTitle": "English (AAC 5.1)",
-  "extendedDisplayTitle": "English (AAC 5.1)"
+  "hearingImpaired": true,
+  "original": true,
+  "title": "SDH",
+  "displayTitle": "English SDH (PGS)",
+  "extendedDisplayTitle": "SDH (English PGS)"
+}
+
+// French SRT Forced
+{
+  "id": 75585,
+  "streamType": 3,
+  "canAutoSync": false,
+  "default": true,
+  "forced": true,
+  "codec": "srt",
+  "index": 5,
+  "language": "Français",
+  "languageTag": "fr",
+  "languageCode": "fra",
+  "title": "FR Forced",
+  "displayTitle": "Français Forced (SRT)",
+  "extendedDisplayTitle": "FR Forced (SRT)"
 }
