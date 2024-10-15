@@ -99,8 +99,8 @@ filters:
       audio:
         # Audio Filter 1 - First English audio track that's not TRUEHD and not a commentary
         - include:
-            language: English # Needs to be in the original language, e.g Español for Spanish, Français for French, Polski for Polish.
-            # languageCode: eng # Alternative to the above, e.g. jpn for Japanese, pol for Polish
+            language: English # Needs to be in the original language, e.g Español for Spanish
+            # languageCode: eng # Alternative to the above, e.g. jpn for Japanese
           exclude:
             codec: truehd
             extendedDisplayTitle: commentary
