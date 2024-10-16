@@ -1,0 +1,13 @@
+node_modules
+.github
+config
+logs
+config.yaml
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+*.md
+example.json
+docker-compose.yaml
