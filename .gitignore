@@ -1,3 +1,4 @@
 logs/
 node_modules/
 config/
+eslint.config.mjs
