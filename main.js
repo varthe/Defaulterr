@@ -805,7 +805,7 @@ app.listen(PORT, async () => {
     }
     await fetchAllUsersListedInFilters()
     if (USERS.size === 0)
-      throw new Error("No users with access to libraries listed")
+      throw new Error("No users with access to libraries detected")
 
     await fetchAllLibraries()
 
