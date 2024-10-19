@@ -393,7 +393,10 @@ const identifyStreamsToUpdate = async (parts, filters) => {
         }
       }
 
-      if (filters.subtitles) {
+      if (filters.subtitles === "disabled") {
+        partUpdate.subtitleStreamId = 0
+        logger.info(`Part ID ${part.partId}: disabled subtitles`)
+      } else if (filters.subtitles) {
         const subtitleStreams = part.streams.filter(
           (stream) => stream.streamType === STREAM_TYPES.subtitles
         )
@@ -413,7 +416,7 @@ const identifyStreamsToUpdate = async (parts, filters) => {
         }
       }
 
-      if (partUpdate.audioStreamId || partUpdate.subtitleStreamId) {
+      if (partUpdate.audioStreamId || partUpdate.subtitleStreamId >= 0) {
         streamsToUpdate.push(partUpdate)
       }
     }
@@ -446,7 +449,7 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
         const queryParams = new URLSearchParams()
         if (stream.audioStreamId)
           queryParams.append("audioStreamID", stream.audioStreamId)
-        if (stream.subtitleStreamId)
+        if (stream.subtitleStreamId >= 0)
           queryParams.append("subtitleStreamID", stream.subtitleStreamId)
 
         try {
@@ -494,9 +497,10 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
           const audioMessage = stream.audioStreamId
             ? `Audio ID ${stream.audioStreamId}`
             : ""
-          const subtitleMessage = stream.subtitleStreamId
-            ? `Subtitle ID ${stream.subtitleStreamId}`
-            : ""
+          const subtitleMessage =
+            stream.subtitleStreamId >= 0
+              ? `Subtitle ID ${stream.subtitleStreamId}`
+              : ""
           const updateMessage = [audioMessage, subtitleMessage]
             .filter(Boolean)
             .join(" and ")
