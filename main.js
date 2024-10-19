@@ -28,9 +28,7 @@ const axiosInstance = axios.create({
 // Utility to handle error logging
 const handleAxiosError = (context, error) => {
   if (error.response) {
-    logger.error(
-      `Error ${context}: ${error.response.status} - ${error.response.statusText}`
-    )
+    logger.error(`Error ${context}: ${error.response.status} - ${error.response.statusText}`)
   } else if (error.request) {
     logger.error(`Error ${context}: No response received.`)
   } else {
@@ -61,8 +59,7 @@ const getUserDetailsFromXml = async (xml) => {
 // Fetch all users listed in filters
 const fetchAllUsersListedInFilters = async () => {
   try {
-    if (!config.plex_client_identifier)
-      throw new Error("Client identifier not supplied in config")
+    if (!config.plex_client_identifier) throw new Error("Client identifier not supplied in config")
     const response = await axios.get(
       `https://plex.tv/api/servers/${config.plex_client_identifier}/shared_servers`,
       {
@@ -141,9 +138,7 @@ const fetchUsersWithAccess = async (libraryName) => {
 const setupCronJob = () => {
   if (config.dry_run || !config.partial_run_cron_expression) return
   if (!cronValidator.isValidCron(config.partial_run_cron_expression))
-    throw new Error(
-      `Invalid cron expression: ${config.partial_run_cron_expression}`
-    )
+    throw new Error(`Invalid cron expression: ${config.partial_run_cron_expression}`)
   cron.schedule(config.partial_run_cron_expression, async () => {
     logger.info(`Running scheduled partial run at ${new Date().toISOString()}`)
     await performPartialRun()
@@ -159,13 +154,9 @@ const fetchAllLibraries = async () => {
     libraries.forEach((library) => {
       if (library.title in config.filters) {
         if (!["movie", "show"].includes(library.type))
-          throw new Error(
-            `Invalid library type '${library.type}'. Must be 'movie' or 'show'`
-          )
+          throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
         LIBRARIES.set(library.key, { name: library.title, type: library.type })
-        logger.info(
-          `Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`
-        )
+        logger.info(`Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`)
       }
     })
     logger.info("Fetched and mapped all relevant libraries.")
@@ -191,23 +182,17 @@ const saveLastRunTimestamps = (timestamps) => {
 // Fetch media items that were updated after a specific timestamp
 const fetchUpdatedMediaItems = async (libraryId, lastUpdatedAt) => {
   try {
-    const { data } = await axiosInstance.get(
-      `/library/sections/${libraryId}/all`
-    )
+    const { data } = await axiosInstance.get(`/library/sections/${libraryId}/all`)
     const items = data?.MediaContainer?.Metadata || []
 
     // Filter items updated after the last known updatedAt timestamp
     return items.filter((item) => item.updatedAt > lastUpdatedAt)
   } catch (error) {
-    handleAxiosError(
-      `fetching updated media for Library ID ${libraryId}`,
-      error
-    )
+    handleAxiosError(`fetching updated media for Library ID ${libraryId}`, error)
     return []
   }
 }
 
-// Optimized evaluateStream function using .some
 const evaluateStreams = (streams, filters) => {
   for (const filter of Object.values(filters)) {
     const { include, exclude } = filter
@@ -218,10 +203,7 @@ const evaluateStreams = (streams, filters) => {
         include &&
         Object.entries(include).some(([field, value]) => {
           const streamValue = stream[field]?.toString().toLowerCase()
-          return (
-            !streamValue ||
-            !streamValue.includes(value.toString().toLowerCase())
-          )
+          return !streamValue || !streamValue.includes(value.toString().toLowerCase())
         })
       ) {
         return false
@@ -241,7 +223,12 @@ const evaluateStreams = (streams, filters) => {
       return true
     })
 
-    if (defaultStream) return defaultStream
+    if (defaultStream)
+      return {
+        id: defaultStream.id,
+        displayTitle: defaultStream.displayTitle,
+        onMatch: filter.on_match || {},
+      }
   }
 }
 
@@ -254,9 +241,7 @@ const fetchStreamsForItem = async (itemId) => {
       logger.warn(`Item ID ${itemId} has invalid media structure. Skipping.`)
       return { partId: itemId, streams: [] }
     }
-    const streams = part.Stream.filter(
-      (stream) => stream.streamType !== STREAM_TYPES.video
-    )
+    const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
     return { partId: part.id, streams: streams }
   } catch (error) {
     handleAxiosError(`fetching streams for Item ID ${itemId}`, error)
@@ -267,9 +252,7 @@ const fetchStreamsForItem = async (itemId) => {
 // Fetch all episodes of a season
 const fetchStreamsForSeason = async (seasonId) => {
   try {
-    const { data } = await axiosInstance.get(
-      `/library/metadata/${seasonId}/children`
-    )
+    const { data } = await axiosInstance.get(`/library/metadata/${seasonId}/children`)
     const episodes = data?.MediaContainer?.Metadata || []
     if (episodes.length === 0) {
       logger.warn(`No episodes found for Season ID ${seasonId}`)
@@ -293,9 +276,7 @@ const fetchStreamsForSeason = async (seasonId) => {
 // Fetch all seasons of a show
 const fetchStreamsForShow = async (showId) => {
   try {
-    const { data } = await axiosInstance.get(
-      `/library/metadata/${showId}/children`
-    )
+    const { data } = await axiosInstance.get(`/library/metadata/${showId}/children`)
     const seasons = data?.MediaContainer?.Metadata || []
     if (seasons.length === 0) {
       logger.warn(`No seasons found for Show ID ${showId}`)
@@ -315,38 +296,6 @@ const fetchStreamsForShow = async (showId) => {
   }
 }
 
-// Fetch streams for a given library (either movies or TV shows)
-const fetchStreamsForLibrary = async (libraryName) => {
-  try {
-    const { id, type } = await fetchLibraryDetailsByName(libraryName)
-    if (!id || !type) {
-      logger.warn(`Library '${libraryName}' details are incomplete. Skipping.`)
-      return []
-    }
-    const { data } = await axiosInstance.get(`/library/sections/${id}/all`)
-    const items = data?.MediaContainer?.Metadata || []
-
-    const streams = []
-    for (const item of items) {
-      if (type === "movie") {
-        const stream = await fetchStreamsForItem(item.ratingKey)
-        streams.push(stream)
-        // Optional: Delay between fetching each movie to reduce load
-        await delay(100) // 50ms delay
-      } else if (type === "show") {
-        const showStreams = await fetchStreamsForShow(item.ratingKey)
-        streams.push(...showStreams)
-        // Optional: Delay between fetching each show to reduce load
-        await delay(100) // 100ms delay
-      }
-    }
-    return streams
-  } catch (error) {
-    handleAxiosError(`fetching streams for Library '${libraryName}'`, error)
-    return []
-  }
-}
-
 // Fetch library details by its name
 const fetchLibraryDetailsByName = async (libraryName) => {
   try {
@@ -362,6 +311,23 @@ const fetchLibraryDetailsByName = async (libraryName) => {
   }
 }
 
+const findMatchingAudioStream = (part, audioFilters) => {
+  if (!audioFilters) return
+
+  const audioStreams = part.streams.filter((stream) => stream.streamType === STREAM_TYPES.audio)
+  return evaluateStreams(audioStreams, audioFilters)
+}
+
+const findMatchingSubtitleStream = (part, subtitleFilters) => {
+  if (!subtitleFilters) return
+  if (subtitleFilters === "disabled") return { id: 0 }
+
+  const subtitleStreams = part.streams.filter(
+    (stream) => stream.streamType === STREAM_TYPES.subtitles
+  )
+  return evaluateStreams(subtitleStreams, subtitleFilters)
+}
+
 // Determine which streams should be updated based on filters
 const identifyStreamsToUpdate = async (parts, filters) => {
   try {
@@ -375,45 +341,33 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
       const partUpdate = { partId: part.partId }
 
-      if (filters.audio) {
-        const audioStreams = part.streams.filter(
-          (stream) => stream.streamType === STREAM_TYPES.audio
-        )
-        const audioStream = evaluateStreams(audioStreams, filters.audio)
+      let audio = findMatchingAudioStream(part, filters.audio) || {}
+      let subtitles = findMatchingSubtitleStream(part, filters.subtitles) || {}
 
-        if (audioStream) {
-          logger.info(
-            `Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`
-          )
-          partUpdate.audioStreamId = audioStream.id
-        } else {
-          logger.info(
-            `Part ID ${part.partId}: no match found for audio streams`
-          )
-        }
+      if (audio.onMatch?.subtitles) {
+        subtitles = findMatchingSubtitleStream(part, audio.onMatch.subtitles)
       }
 
-      if (filters.subtitles === "disabled") {
-        partUpdate.subtitleStreamId = 0
-        logger.info(`Part ID ${part.partId}: disabled subtitles`)
-      } else if (filters.subtitles) {
-        const subtitleStreams = part.streams.filter(
-          (stream) => stream.streamType === STREAM_TYPES.subtitles
+      if (subtitles.onMatch?.audio)
+        audio = findMatchingAudioStream(part, subtitles.filter.onMatch.audio)
+
+      if (audio.id) {
+        partUpdate.audioStreamId = audio.id
+        logger.info(`Part ID ${part.partId}: match found for audio stream ${audio.displayTitle}`)
+      } else {
+        logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+      }
+      if (subtitles.id >= 0) {
+        partUpdate.subtitleStreamId = subtitles.id
+        logger.info(
+          `Part ID ${part.partId}: ${
+            subtitles.id === 0
+              ? "subtitles disabled"
+              : `match found for subtitle stream ${subtitles.displayTitle}`
+          }`
         )
-        const subtitleStream = evaluateStreams(
-          subtitleStreams,
-          filters.subtitles
-        )
-        if (subtitleStream) {
-          logger.info(
-            `Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`
-          )
-          partUpdate.subtitleStreamId = subtitleStream.id
-        } else {
-          logger.info(
-            `Part ID ${part.partId}: no match found for subtitle streams`
-          )
-        }
+      } else {
+        logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
       }
 
       if (partUpdate.audioStreamId || partUpdate.subtitleStreamId >= 0) {
@@ -422,9 +376,7 @@ const identifyStreamsToUpdate = async (parts, filters) => {
     }
     return streamsToUpdate
   } catch (error) {
-    logger.error(
-      `Error while evaluating streams for filter: ${error.message}. Aborting`
-    )
+    logger.error(`Error while evaluating streams for filter: ${error.message}. Aborting`)
     return []
   }
 }
@@ -441,14 +393,11 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
       for (const username of usernames) {
         const token = USERS.get(username)
         if (!token) {
-          logger.warn(
-            `No access token found for user ${username}. Skipping update.`
-          )
+          logger.warn(`No access token found for user ${username}. Skipping update.`)
           continue
         }
         const queryParams = new URLSearchParams()
-        if (stream.audioStreamId)
-          queryParams.append("audioStreamID", stream.audioStreamId)
+        if (stream.audioStreamId) queryParams.append("audioStreamID", stream.audioStreamId)
         if (stream.subtitleStreamId >= 0)
           queryParams.append("subtitleStreamID", stream.subtitleStreamId)
 
@@ -494,26 +443,17 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
               }
             })
 
-          const audioMessage = stream.audioStreamId
-            ? `Audio ID ${stream.audioStreamId}`
-            : ""
+          const audioMessage = stream.audioStreamId ? `Audio ID ${stream.audioStreamId}` : ""
           const subtitleMessage =
-            stream.subtitleStreamId >= 0
-              ? `Subtitle ID ${stream.subtitleStreamId}`
-              : ""
-          const updateMessage = [audioMessage, subtitleMessage]
-            .filter(Boolean)
-            .join(" and ")
+            stream.subtitleStreamId >= 0 ? `Subtitle ID ${stream.subtitleStreamId}` : ""
+          const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(" and ")
           logger.info(
             `Update ${updateMessage} for user ${username} in group ${group}: ${
               response.status === 200 ? "SUCCESS" : "FAIL"
             }`
           )
         } catch (error) {
-          handleAxiosError(
-            `posting update for user '${username}' in group '${group}'`,
-            error
-          )
+          handleAxiosError(`posting update for user '${username}' in group '${group}'`, error)
         }
         await delay(100) // 50ms delay
       }
@@ -539,10 +479,7 @@ const identifyStreamsForDryRun = async () => {
         const newStreams = {}
 
         for (const group in groupFilters) {
-          const matchedStreams = await identifyStreamsToUpdate(
-            [stream],
-            groupFilters[group]
-          )
+          const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group])
           if (matchedStreams.length > 0) {
             newStreams[group] = matchedStreams
           }
@@ -557,10 +494,7 @@ const identifyStreamsForDryRun = async () => {
           const newStreams = {}
 
           for (const group in groupFilters) {
-            const matchedStreams = await identifyStreamsToUpdate(
-              [stream],
-              groupFilters[group]
-            )
+            const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group])
             if (matchedStreams.length > 0) {
               newStreams[group] = matchedStreams
             }
@@ -612,10 +546,7 @@ const performPartialRun = async () => {
         const newStreams = {}
 
         for (const group in groupFilters) {
-          const matchedStreams = await identifyStreamsToUpdate(
-            [stream],
-            groupFilters[group]
-          )
+          const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group])
           if (matchedStreams.length > 0) {
             newStreams[group] = matchedStreams
           }
@@ -640,10 +571,7 @@ const performPartialRun = async () => {
           const newStreams = {}
 
           for (const group in groupFilters) {
-            const matchedStreams = await identifyStreamsToUpdate(
-              [stream],
-              groupFilters[group]
-            )
+            const matchedStreams = await identifyStreamsToUpdate([stream], groupFilters[group])
             if (matchedStreams.length > 0) {
               newStreams[group] = matchedStreams
             }
@@ -665,14 +593,10 @@ const performPartialRun = async () => {
 
     // Update the timestamp for the current library
     if (updatedItems.length > 0) {
-      const latestUpdatedAt = Math.max(
-        ...updatedItems.map((item) => item.updatedAt)
-      )
+      const latestUpdatedAt = Math.max(...updatedItems.map((item) => item.updatedAt))
       newTimestamps[libraryName] = latestUpdatedAt
     } else {
-      logger.info(
-        `No changes detected in library ${libraryName} since the last run`
-      )
+      logger.info(`No changes detected in library ${libraryName} since the last run`)
     }
   }
 
@@ -688,14 +612,11 @@ app.post("/webhook", async (req, res) => {
     logger.info("Tautulli webhook received. Processing...")
 
     const { type, libraryId, mediaId } = req.body
-    if (!type || !libraryId || !mediaId)
-      throw new Error("Error getting request body")
+    if (!type || !libraryId || !mediaId) throw new Error("Error getting request body")
 
     const libraryName = LIBRARIES.get(libraryId)?.name // LIBRARIES only has libraries present in filters
     if (!libraryName) {
-      logger.info(
-        `Library ID ${libraryId} not found in filters. Ending request`
-      )
+      logger.info(`Library ID ${libraryId} not found in filters. Ending request`)
       return res.status(200).send("Event not relevant")
     }
 
@@ -732,16 +653,13 @@ app.post("/webhook", async (req, res) => {
       for (const username of usernames) {
         const token = USERS.get(username)
         if (!token) {
-          logger.warn(
-            `No access token found for user '${username}'. Skipping update.`
-          )
+          logger.warn(`No access token found for user '${username}'. Skipping update.`)
           continue
         }
 
         for (const stream of newStreams) {
           const queryParams = new URLSearchParams()
-          if (stream.audioStreamId)
-            queryParams.append("audioStreamID", stream.audioStreamId)
+          if (stream.audioStreamId) queryParams.append("audioStreamID", stream.audioStreamId)
           if (stream.subtitleStreamId)
             queryParams.append("subtitleStreamID", stream.subtitleStreamId)
 
@@ -752,25 +670,18 @@ app.post("/webhook", async (req, res) => {
               { headers: { "X-Plex-Token": token } }
             )
 
-            const audioMessage = stream.audioStreamId
-              ? `Audio ID ${stream.audioStreamId}`
-              : ""
+            const audioMessage = stream.audioStreamId ? `Audio ID ${stream.audioStreamId}` : ""
             const subtitleMessage = stream.subtitleStreamId
               ? `Subtitle ID ${stream.subtitleStreamId}`
               : ""
-            const updateMessage = [audioMessage, subtitleMessage]
-              .filter(Boolean)
-              .join(" and ")
+            const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(" and ")
             logger.info(
               `Update ${updateMessage} for user ${username} in group ${group}: ${
                 response.status === 200 ? "SUCCESS" : "FAIL"
               }`
             )
           } catch (error) {
-            handleAxiosError(
-              `posting update for user '${username}' in group '${group}'`,
-              error
-            )
+            handleAxiosError(`posting update for user '${username}' in group '${group}'`, error)
           }
 
           // Optional: Delay between posting each update to reduce load
@@ -788,12 +699,8 @@ app.post("/webhook", async (req, res) => {
 })
 
 // Handle uncaught exceptions and unhandled rejections
-process.on("uncaughtException", (error) =>
-  logger.error(`Uncaught exception: ${error.message}`)
-)
-process.on("unhandledRejection", (reason) =>
-  logger.error(`Unhandled rejection: ${reason}`)
-)
+process.on("uncaughtException", (error) => logger.error(`Uncaught exception: ${error.message}`))
+process.on("unhandledRejection", (reason) => logger.error(`Unhandled rejection: ${reason}`))
 
 // Initializing the application
 const PORT = process.env.PORT || 3184
@@ -804,8 +711,7 @@ app.listen(PORT, async () => {
       USERS.set(config.plex_owner_name, config.plex_owner_token)
     }
     await fetchAllUsersListedInFilters()
-    if (USERS.size === 0)
-      throw new Error("No users with access to libraries detected")
+    if (USERS.size === 0) throw new Error("No users with access to libraries detected")
 
     await fetchAllLibraries()
 
