@@ -62,15 +62,20 @@ filters:
     weebs:
       audio:
         - include:
-            languageCode: jpn # Japanese
-      subtitles:
-        - include:
             language: English
-            extendedDisplayTitle: full
+          on_match:
+            subtitles: disabled
         - include:
-            language: English
-            extendedDisplayTitle: dialogue
-        - include:
-            language: English
-          exclude:
-            extendedDisplayTitle: signs
+            languageCode: jpn # Japenese
+          on_match:
+            subtitles:
+              - include:
+                  language: English
+                  extendedDisplayTitle: full
+              - include:
+                  language: English
+                  extendedDisplayTitle: dialogue
+              - include:
+                  language: English
+                exclude:
+                  extendedDisplayTitle: signs
