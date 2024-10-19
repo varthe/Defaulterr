@@ -89,7 +89,7 @@ Filters define how audio and subtitle streams are updated based on specified cri
     - **Stream Type**: Can be `audio` or `subtitles`.
       - **include**: Fields that MUST appear in the stream AND include the specified value
       - **exclude**: Fields that MUST NOT appear in the stream OR not be the specified value
-      - **disabled**: Sets `subtitles` to off
+      - **on_match**: Specifies filters for the other stream type if a match is found. For example, disable subtitles if a Spanish audio track is matched. Otherwise find Spanish subtitles.
 
 Multiple groups and filters can be defined per library, with the first matching filter being applied. If no filters match, the item remains unchanged in Plex. Filters can utilize any property in the stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for examples.
 
@@ -124,21 +124,27 @@ filters:
   Anime: # Library name
     weebs: # Group name
       audio:
-        # Audio Filter 1 - First Japanese track
-        - include:
-            languageCode: jpn # Japanese
-      subtitles:
-        # Full subtitles -> Dialogue subtitles -> Anything without the word "signs"
+        # Audio Filter 1 - First English track with disabled subtitles
         - include:
             language: English
-            extendedDisplayTitle: full
+          on_match:
+            subtitles: disabled # Set subtitles to "off" in Plex
+        # Audio Filter 2 - Japenese track with English subtitles
         - include:
-            language: English
-            extendedDisplayTitle: dialogue
-        - include:
-            language: English
-          exclude:
-            extendedDisplayTitle: signs
+            languageCode: jpn # Japenese
+            on_match:
+              subtitles:
+                # Full subtitles -> Dialogue subtitles -> Anything without the word "signs"
+                - include:
+                    language: English
+                    extendedDisplayTitle: full
+                - include:
+                    language: English
+                    extendedDisplayTitle: dialogue
+                - include:
+                    language: English
+                  exclude:
+                    extendedDisplayTitle: signs
 ```
 
 ### Tautulli Webhook Integration
