@@ -92,8 +92,8 @@ const fetchAllUsersListedInFilters = async () => {
     }
     logger.info("Fetched and stored user details successfully.")
   } catch (error) {
-    handleAxiosError("fetching users from server", error)
-    process.exit(1)
+    logger.warn(`Could not fetch users with access to server: ${error.message}`)
+    return
   }
 }
 
@@ -803,8 +803,10 @@ app.listen(PORT, async () => {
     if (config.plex_owner_name) {
       USERS.set(config.plex_owner_name, config.plex_owner_token)
     }
-
     await fetchAllUsersListedInFilters()
+    if (USERS.size === 0)
+      throw new Error("No users with access to libraries detected")
+
     await fetchAllLibraries()
 
     if (config.dry_run) await performDryRun()
