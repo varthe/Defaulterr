@@ -40,12 +40,16 @@ filters:
   Movies:
     serialTranscoders:
       audio:
+        # Audio Filter 1 - First English audio track that's not TRUEHD/DTS and not a commentary
         - include:
             language: English # Needs to be in the original language, e.g Español for Spanish
             # languageCode: eng # Alternative to the above, e.g. jpn for Japanese
           exclude:
-            codec: truehd
+            codec:
+              - truehd
+              - dts
             extendedDisplayTitle: commentary
+        # Audio Filter 2 - Any English track (fallback if the above filter doesn't match)
         - include:
             language: English
     subtitleEnjoyers:

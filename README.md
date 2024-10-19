@@ -91,6 +91,8 @@ Filters define how audio and subtitle streams are updated based on specified cri
       - **exclude**: Fields that MUST NOT appear in the stream OR not be the specified value
       - **on_match**: Specifies filters for the other stream type if a match is found. For example, disable subtitles if a Spanish audio track is matched. Otherwise find Spanish subtitles.
 
+> **Note:** Any field (e.g., `language`, `codec`, `extendedDisplayTitle`) can either be a single value or an array of values. This allows flexibility in filtering criteria by matching multiple options when needed.
+
 Multiple groups and filters can be defined per library, with the first matching filter being applied. If no filters match, the item remains unchanged in Plex. Filters can utilize any property in the stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for examples.
 
 ```yaml
@@ -98,12 +100,14 @@ filters:
   Movies: # Library name
     serialTranscoders: # Group name
       audio:
-        # Audio Filter 1 - First English audio track that's not TRUEHD and not a commentary
+        # Audio Filter 1 - First English audio track that's not TRUEHD/DTS and not a commentary
         - include:
             language: English # Needs to be in the original language, e.g Español for Spanish
             # languageCode: eng # Alternative to the above, e.g. jpn for Japanese
           exclude:
-            codec: truehd
+            codec:
+              - truehd
+              - dts
             extendedDisplayTitle: commentary
         # Audio Filter 2 - Any English track (fallback if the above filter doesn't match)
         - include:
