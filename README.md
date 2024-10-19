@@ -89,6 +89,7 @@ Filters define how audio and subtitle streams are updated based on specified cri
     - **Stream Type**: Can be `audio` or `subtitles`.
       - **include**: Fields that MUST appear in the stream AND include the specified value
       - **exclude**: Fields that MUST NOT appear in the stream OR not be the specified value
+      - **disabled**: Sets `subtitles` to off
 
 Multiple groups and filters can be defined per library, with the first matching filter being applied. If no filters match, the item remains unchanged in Plex. Filters can utilize any property in the stream object returned by Plex. See [example.json](https://github.com/varthe/Defaulterr/blob/main/example.json) for examples.
 

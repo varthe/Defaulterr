@@ -61,21 +61,26 @@ const schema = {
                   },
                 },
                 subtitles: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      include: {
+                  oneOf: [
+                    { type: "string", enum: ["disabled"] }, // Allow "disabled" as a valid value
+                    {
+                      type: "array",
+                      items: {
                         type: "object",
-                        additionalProperties: true, // Allow any properties inside 'include'
-                      },
-                      exclude: {
-                        type: "object",
-                        additionalProperties: true, // Allow any properties inside 'exclude'
+                        properties: {
+                          include: {
+                            type: "object",
+                            additionalProperties: true, // Allow any properties inside 'include'
+                          },
+                          exclude: {
+                            type: "object",
+                            additionalProperties: true, // Allow any properties inside 'exclude'
+                          },
+                        },
+                        additionalProperties: false, // Prevent additional properties outside 'include' and 'exclude'
                       },
                     },
-                    additionalProperties: false, // Prevent additional properties outside 'include' and 'exclude'
-                  },
+                  ],
                 },
               },
               additionalProperties: false, // Prevent additional properties outside 'audio' and 'subtitles'
