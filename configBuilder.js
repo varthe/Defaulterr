@@ -27,7 +27,7 @@ const schema = {
       patternProperties: {
         ".*": {
           type: "array",
-          items: { type: "string" }, // Each group is an array of tokens (strings)
+          items: { type: "string" },
         },
       },
       additionalProperties: false,
@@ -36,11 +36,9 @@ const schema = {
       type: "object",
       patternProperties: {
         ".*": {
-          // Matches arbitrary library names like "Movies - 1080p" or "Anime"
           type: "object",
           patternProperties: {
             ".*": {
-              // Matches arbitrary group names like "serialTranscoders" or "weebs"
               type: "object",
               properties: {
                 audio: {
@@ -48,21 +46,43 @@ const schema = {
                   items: {
                     type: "object",
                     properties: {
-                      include: {
+                      include: { type: "object", additionalProperties: true },
+                      exclude: { type: "object", additionalProperties: true },
+                      on_match: {
                         type: "object",
-                        additionalProperties: true, // Allow any properties inside 'include'
-                      },
-                      exclude: {
-                        type: "object",
-                        additionalProperties: true, // Allow any properties inside 'exclude'
+                        properties: {
+                          subtitles: {
+                            oneOf: [
+                              { type: "string", enum: ["disabled"] },
+                              {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    include: {
+                                      type: "object",
+                                      additionalProperties: true,
+                                    },
+                                    exclude: {
+                                      type: "object",
+                                      additionalProperties: true,
+                                    },
+                                  },
+                                  additionalProperties: false,
+                                },
+                              },
+                            ],
+                          },
+                        },
+                        additionalProperties: false,
                       },
                     },
-                    additionalProperties: false, // Prevent additional properties outside 'include' and 'exclude'
+                    additionalProperties: false,
                   },
                 },
                 subtitles: {
                   oneOf: [
-                    { type: "string", enum: ["disabled"] }, // Allow "disabled" as a valid value
+                    { type: "string", enum: ["disabled"] },
                     {
                       type: "array",
                       items: {
@@ -70,20 +90,20 @@ const schema = {
                         properties: {
                           include: {
                             type: "object",
-                            additionalProperties: true, // Allow any properties inside 'include'
+                            additionalProperties: true,
                           },
                           exclude: {
                             type: "object",
-                            additionalProperties: true, // Allow any properties inside 'exclude'
+                            additionalProperties: true,
                           },
                         },
-                        additionalProperties: false, // Prevent additional properties outside 'include' and 'exclude'
+                        additionalProperties: false,
                       },
                     },
                   ],
                 },
               },
-              additionalProperties: false, // Prevent additional properties outside 'audio' and 'subtitles'
+              additionalProperties: false,
             },
           },
         },

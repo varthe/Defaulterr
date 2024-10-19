@@ -375,17 +375,23 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
       const partUpdate = { partId: part.partId }
 
-      if (filters.audio) {
+      let audioFilters = filters.audio
+      let subtitleFilters = filters.subtitles
+
+      if (audioFilters) {
         const audioStreams = part.streams.filter(
           (stream) => stream.streamType === STREAM_TYPES.audio
         )
-        const audioStream = evaluateStreams(audioStreams, filters.audio)
+        const audioStream = evaluateStreams(audioStreams, audioFilters)
 
         if (audioStream) {
           logger.info(
             `Part ID ${part.partId}: match found for audio stream ${audioStream.displayTitle}`
           )
           partUpdate.audioStreamId = audioStream.id
+          if (audioFilters[0].on_match?.subtitles) {
+            subtitleFilters = filters.audio[0].on_match.subtitles
+          }
         } else {
           logger.info(
             `Part ID ${part.partId}: no match found for audio streams`
@@ -393,17 +399,14 @@ const identifyStreamsToUpdate = async (parts, filters) => {
         }
       }
 
-      if (filters.subtitles === "disabled") {
-        partUpdate.subtitleStreamId = 0
+      if (subtitleFilters === "disabled") {
         logger.info(`Part ID ${part.partId}: disabled subtitles`)
-      } else if (filters.subtitles) {
+        partUpdate.subtitleStreamId = 0
+      } else if (subtitleFilters) {
         const subtitleStreams = part.streams.filter(
           (stream) => stream.streamType === STREAM_TYPES.subtitles
         )
-        const subtitleStream = evaluateStreams(
-          subtitleStreams,
-          filters.subtitles
-        )
+        const subtitleStream = evaluateStreams(subtitleStreams, subtitleFilters)
         if (subtitleStream) {
           logger.info(
             `Part ID ${part.partId}: match found for subtitle stream ${subtitleStream.displayTitle}`
