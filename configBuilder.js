@@ -46,8 +46,30 @@ const schema = {
                   items: {
                     type: "object",
                     properties: {
-                      include: { type: "object", additionalProperties: true },
-                      exclude: { type: "object", additionalProperties: true },
+                      include: {
+                        type: "object",
+                        additionalProperties: {
+                          oneOf: [
+                            { type: "string" }, // Single value
+                            {
+                              type: "array",
+                              items: { type: "string" }, // Array of values
+                            },
+                          ],
+                        },
+                      },
+                      exclude: {
+                        type: "object",
+                        additionalProperties: {
+                          oneOf: [
+                            { type: "string" }, // Single value
+                            {
+                              type: "array",
+                              items: { type: "string" }, // Array of values
+                            },
+                          ],
+                        },
+                      },
                       on_match: {
                         type: "object",
                         properties: {
@@ -61,11 +83,27 @@ const schema = {
                                   properties: {
                                     include: {
                                       type: "object",
-                                      additionalProperties: true,
+                                      additionalProperties: {
+                                        oneOf: [
+                                          { type: "string" }, // Single value
+                                          {
+                                            type: "array",
+                                            items: { type: "string" }, // Array of values
+                                          },
+                                        ],
+                                      },
                                     },
                                     exclude: {
                                       type: "object",
-                                      additionalProperties: true,
+                                      additionalProperties: {
+                                        oneOf: [
+                                          { type: "string" }, // Single value
+                                          {
+                                            type: "array",
+                                            items: { type: "string" }, // Array of values
+                                          },
+                                        ],
+                                      },
                                     },
                                   },
                                   additionalProperties: false,
@@ -90,11 +128,71 @@ const schema = {
                         properties: {
                           include: {
                             type: "object",
-                            additionalProperties: true,
+                            additionalProperties: {
+                              oneOf: [
+                                { type: "string" }, // Single value
+                                {
+                                  type: "array",
+                                  items: { type: "string" }, // Array of values
+                                },
+                              ],
+                            },
                           },
                           exclude: {
                             type: "object",
-                            additionalProperties: true,
+                            additionalProperties: {
+                              oneOf: [
+                                { type: "string" }, // Single value
+                                {
+                                  type: "array",
+                                  items: { type: "string" }, // Array of values
+                                },
+                              ],
+                            },
+                          },
+                          on_match: {
+                            type: "object",
+                            properties: {
+                              audio: {
+                                oneOf: [
+                                  { type: "string", enum: ["disabled"] },
+                                  {
+                                    type: "array",
+                                    items: {
+                                      type: "object",
+                                      properties: {
+                                        include: {
+                                          type: "object",
+                                          additionalProperties: {
+                                            oneOf: [
+                                              { type: "string" }, // Single value
+                                              {
+                                                type: "array",
+                                                items: { type: "string" }, // Array of values
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        exclude: {
+                                          type: "object",
+                                          additionalProperties: {
+                                            oneOf: [
+                                              { type: "string" }, // Single value
+                                              {
+                                                type: "array",
+                                                items: { type: "string" }, // Array of values
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      },
+                                      additionalProperties: false,
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            additionalProperties: false,
                           },
                         },
                         additionalProperties: false,
@@ -110,13 +208,7 @@ const schema = {
       },
     },
   },
-  required: [
-    "plex_server_url",
-    "plex_owner_token",
-    "plex_client_identifier",
-    "groups",
-    "filters",
-  ],
+  required: ["plex_server_url", "plex_owner_token", "plex_client_identifier", "groups", "filters"],
   additionalProperties: false,
 }
 

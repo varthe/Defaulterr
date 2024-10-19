@@ -203,7 +203,9 @@ const evaluateStreams = (streams, filters) => {
         include &&
         Object.entries(include).some(([field, value]) => {
           const streamValue = stream[field]?.toString().toLowerCase()
-          return !streamValue || !streamValue.includes(value.toString().toLowerCase())
+          if (!streamValue) return true
+          const valuesArray = Array.isArray(value) ? value : [value]
+          return !valuesArray.some((value) => streamValue.includes(value.toString().toLowerCase()))
         })
       ) {
         return false
@@ -214,7 +216,9 @@ const evaluateStreams = (streams, filters) => {
         exclude &&
         Object.entries(exclude).some(([field, value]) => {
           const streamValue = stream[field]?.toString().toLowerCase()
-          return streamValue?.includes(value.toString().toLowerCase())
+          if (!streamValue) return false
+          const valuesArray = Array.isArray(value) ? value : [value]
+          return valuesArray.some((value) => streamValue.includes(value.toString().toLowerCase()))
         })
       ) {
         return false
