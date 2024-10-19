@@ -11,3 +11,4 @@ Dockerfile
 *.md
 example.json
 docker-compose.yaml
+eslint.config.mjs
