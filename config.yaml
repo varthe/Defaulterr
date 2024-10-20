@@ -12,6 +12,8 @@ dry_run: True # For testing filters; won't update users. Recommended to test a f
 # WARNING: The first run will update all existing media. Subsequent runs will be faster.
 partial_run_on_start: False
 partial_run_cron_expression: "" # E.g., '0 3 * * *' to run every day at 3:00 am. See crontab.guru
+# CLEAN RUN: Updates all existing media. Should only be used if you want to re-apply a new set of filters on your libraries.
+clean_run_on_start: False
 # RUN SETTINGS END
 
 # MANAGED ACCOUNTS (optional)

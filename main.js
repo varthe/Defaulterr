@@ -518,10 +518,10 @@ const performDryRun = async () => {
 }
 
 // Partial run: process items updated since last run
-const performPartialRun = async () => {
-  logger.info("STARTING PARTIAL RUN.")
+const performPartialRun = async (cleanRun) => {
+  logger.info(`STARTING ${cleanRun ? "CLEAN" : "PARTIAL"} RUN`)
 
-  const lastRunTimestamps = loadLastRunTimestamps()
+  const lastRunTimestamps = cleanRun ? {} : loadLastRunTimestamps()
   const newTimestamps = {}
 
   for (const libraryName in config.filters) {
@@ -535,9 +535,12 @@ const performPartialRun = async () => {
 
     // Fetch updated media items based on updatedAt timestamp
     const updatedItems = await fetchUpdatedMediaItems(id, lastUpdatedAt)
+    if (!updatedItems || updatedItems.length === 0) {
+      logger.info(`No changes detected in library ${libraryName} since the last run`)
+      continue
+    }
 
     const usersWithAccess = await fetchUsersWithAccess(libraryName)
-
     if (![...usersWithAccess.values()].some((users) => users.length > 0)) {
       logger.warn(`No users have access to library ${libraryName}. Skipping`)
       continue
@@ -596,18 +599,15 @@ const performPartialRun = async () => {
     }
 
     // Update the timestamp for the current library
-    if (updatedItems.length > 0) {
-      const latestUpdatedAt = Math.max(...updatedItems.map((item) => item.updatedAt))
-      newTimestamps[libraryName] = latestUpdatedAt
-    } else {
-      logger.info(`No changes detected in library ${libraryName} since the last run`)
-    }
+    const latestUpdatedAt = Math.max(...updatedItems.map((item) => item.updatedAt))
+    newTimestamps[libraryName] = latestUpdatedAt
   }
 
   // Save the updated timestamps for future runs
-  saveLastRunTimestamps({ ...lastRunTimestamps, ...newTimestamps })
+  if (Object.keys(newTimestamps).length > 0)
+    saveLastRunTimestamps({ ...lastRunTimestamps, ...newTimestamps })
 
-  logger.info("PARTIAL RUN COMPLETE.")
+  logger.info(`FINISHED ${cleanRun ? "CLEAN" : "PARTIAL"} RUN`)
 }
 
 // Tautulli webhook for new items
@@ -721,6 +721,7 @@ app.listen(PORT, async () => {
 
     if (config.dry_run) await performDryRun()
     else if (config.partial_run_on_start) await performPartialRun()
+    else if (config.clean_run_on_start) await performPartialRun(config.clean_run_on_start)
 
     setupCronJob()
   } catch (error) {
