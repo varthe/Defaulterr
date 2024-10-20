@@ -18,6 +18,7 @@ const schema = {
     dry_run: { type: "boolean" },
     partial_run_on_start: { type: "boolean" },
     partial_run_cron_expression: { type: "string" },
+    clean_run_on_start: { type: "boolean" },
     managed_users: {
       type: "object",
       additionalProperties: { type: "string" },

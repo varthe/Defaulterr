@@ -518,10 +518,10 @@ const performDryRun = async () => {
 }
 
 // Partial run: process items updated since last run
-const performPartialRun = async () => {
-  logger.info("STARTING PARTIAL RUN.")
+const performPartialRun = async (cleanRun) => {
+  logger.info(`STARTING ${cleanRun ? "CLEAN" : "PARTIAL"} RUN`)
 
-  const lastRunTimestamps = loadLastRunTimestamps()
+  const lastRunTimestamps = cleanRun ? {} : loadLastRunTimestamps()
   const newTimestamps = {}
 
   for (const libraryName in config.filters) {
@@ -607,7 +607,7 @@ const performPartialRun = async () => {
   if (Object.keys(newTimestamps).length > 0)
     saveLastRunTimestamps({ ...lastRunTimestamps, ...newTimestamps })
 
-  logger.info("PARTIAL RUN COMPLETE.")
+  logger.info(`FINISHED ${cleanRun ? "CLEAN" : "PARTIAL"} RUN`)
 }
 
 // Tautulli webhook for new items
@@ -721,6 +721,7 @@ app.listen(PORT, async () => {
 
     if (config.dry_run) await performDryRun()
     else if (config.partial_run_on_start) await performPartialRun()
+    else if (config.clean_run_on_start) await performPartialRun(config.clean_run_on_start)
 
     setupCronJob()
   } catch (error) {
