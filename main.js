@@ -205,7 +205,7 @@ const evaluateStreams = (streams, filters) => {
           const streamValue = stream[field]?.toString().toLowerCase()
           if (!streamValue) return true
           const valuesArray = Array.isArray(value) ? value : [value]
-          return !valuesArray.some((value) => streamValue.includes(value.toString().toLowerCase()))
+          return valuesArray.some((value) => !streamValue.includes(value.toString().toLowerCase()))
         })
       ) {
         return false
