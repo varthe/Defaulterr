@@ -664,7 +664,7 @@ app.post("/webhook", async (req, res) => {
         for (const stream of newStreams) {
           const queryParams = new URLSearchParams()
           if (stream.audioStreamId) queryParams.append("audioStreamID", stream.audioStreamId)
-          if (stream.subtitleStreamId)
+          if (stream.subtitleStreamId >= 0)
             queryParams.append("subtitleStreamID", stream.subtitleStreamId)
 
           try {
