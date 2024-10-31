@@ -11,10 +11,10 @@ const yamlFilePath = process.argv[3] || "./config.yaml"
 const schema = {
   type: "object",
   properties: {
-    plex_server_url: { type: "string" },
+    plex_server_url: { type: "string", minLength: 1 },
     plex_owner_name: { type: "string" },
-    plex_owner_token: { type: "string" },
-    plex_client_identifier: { type: "string" },
+    plex_owner_token: { type: "string", minLength: 1 },
+    plex_client_identifier: { type: "string", minLength: 1 },
     dry_run: { type: "boolean" },
     partial_run_on_start: { type: "boolean" },
     partial_run_cron_expression: { type: "string" },
@@ -213,6 +213,12 @@ const schema = {
   additionalProperties: false,
 }
 
+const formatErrors = (errors) => {
+  return errors
+    .map((error) => `"${error.instancePath}": ${error.message || "Validation error"}`)
+    .join("\n")
+}
+
 // Function to load and validate YAML
 const loadAndValidateYAML = () => {
   try {
@@ -228,7 +234,7 @@ const loadAndValidateYAML = () => {
       logger.info("YAML file is valid according to the schema.")
       return jsonData
     }
-    throw new Error(`Validation errors: ${JSON.stringify(validate.errors)}`)
+    throw new Error(`\n${formatErrors(validate.errors)}`)
   } catch (error) {
     logger.error(`Error loading or validating YAML: ${error.message}`)
     process.exit(1)
