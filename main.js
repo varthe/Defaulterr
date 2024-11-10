@@ -104,7 +104,7 @@ const fetchUsersWithAccess = async (libraryName) => {
     let usernames = config.groups[group]
     let users = []
     if (usernames.includes("$ALL")) {
-      usernames = [...USERS.keys()] // All users
+      usernames = [...USERS.keys()]
     }
     for (const username of usernames) {
       const token = USERS.get(username)
@@ -114,17 +114,17 @@ const fetchUsersWithAccess = async (libraryName) => {
         })
         .then((response) => {
           if (response.status === 200) {
-            logger.info(
+            logger.debug(
               `Checking if user ${username} of group ${group} has access to library ${libraryName}... OK`
             )
             users.push(username)
           } else {
-            throw new Error("No access")
+            throw new Error(`${response.status}`)
           }
         })
         .catch((error) => {
           logger.warn(
-            `User ${username} of group ${group} has no access to library ${libraryName}. They will be skipped during updates. ${error.message}`
+            `User ${username} of group ${group} can't access library ${libraryName}. They will be skipped during updates. ${error.message}`
           )
         })
       await delay(100)
@@ -156,10 +156,10 @@ const fetchAllLibraries = async () => {
         if (!["movie", "show"].includes(library.type))
           throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
         LIBRARIES.set(library.key, { name: library.title, type: library.type })
-        logger.info(`Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`)
+        logger.debug(`Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`)
       }
     })
-    logger.info("Fetched and mapped all relevant libraries.")
+    logger.info("Fetched and mapped libraries")
   } catch (error) {
     handleAxiosError("fetching libraries", error)
   }
@@ -230,7 +230,7 @@ const evaluateStreams = (streams, filters) => {
     if (defaultStream)
       return {
         id: defaultStream.id,
-        displayTitle: defaultStream.displayTitle,
+        extendedDisplayTitle: defaultStream.extendedDisplayTitle,
         onMatch: filter.on_match || {},
       }
   }
@@ -357,9 +357,9 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
       if (audio.id) {
         partUpdate.audioStreamId = audio.id
-        logger.info(`Part ID ${part.partId}: match found for audio stream ${audio.displayTitle}`)
+        logger.info(`Part ID ${part.partId}: match found for audio stream ${audio.extendedDisplayTitle}`)
       } else {
-        logger.info(`Part ID ${part.partId}: no match found for audio streams`)
+        logger.debug(`Part ID ${part.partId}: no match found for audio streams`)
       }
       if (subtitles.id >= 0) {
         partUpdate.subtitleStreamId = subtitles.id
@@ -367,11 +367,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
           `Part ID ${part.partId}: ${
             subtitles.id === 0
               ? "subtitles disabled"
-              : `match found for subtitle stream ${subtitles.displayTitle}`
+              : `match found for subtitle stream ${subtitles.extendedDisplayTitle}`
           }`
         )
       } else {
-        logger.info(`Part ID ${part.partId}: no match found for subtitle streams`)
+        logger.debug(`Part ID ${part.partId}: no match found for subtitle streams`)
       }
 
       if (partUpdate.audioStreamId || partUpdate.subtitleStreamId >= 0) {
@@ -451,7 +451,7 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
           const subtitleMessage =
             stream.subtitleStreamId >= 0 ? `Subtitle ID ${stream.subtitleStreamId}` : ""
           const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(" and ")
-          logger.info(
+          logger.debug(
             `Update ${updateMessage} for user ${username} in group ${group}: ${
               response.status === 200 ? "SUCCESS" : "FAIL"
             }`
@@ -461,6 +461,7 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
         }
         await delay(100) // 50ms delay
       }
+      logger.info(`Part ID ${stream.partId}: update complete for group ${group}`)
     }
   }
 }
@@ -525,7 +526,7 @@ const performPartialRun = async (cleanRun) => {
   const newTimestamps = {}
 
   for (const libraryName in config.filters) {
-    logger.info(`Processing library for partial run: ${libraryName}`)
+    logger.info(`Processing library: ${libraryName}`)
     const { id, type } = await fetchLibraryDetailsByName(libraryName)
     if (!id || !type) {
       logger.warn(`Library '${libraryName}' details are incomplete. Skipping.`)

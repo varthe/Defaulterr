@@ -17,6 +17,8 @@ services:
     volumes:
       - /path/to/config:/config
       - /path/to/logs:/logs
+    environment:
+      - LOG_LEVEL=info
 ```
 
 ### Configuration Overview

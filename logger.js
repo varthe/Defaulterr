@@ -2,8 +2,11 @@ const path = require("path")
 const winston = require("winston")
 const DailyRotateFile = require("winston-daily-rotate-file")
 
+const logLevel = process.env.LOG_LEVEL || "info"
+const filePath =process.argv[2] || "./logs"
+
 const logger = winston.createLogger({
-  level: "info",
+  level: logLevel,
   format: winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.printf(({ timestamp, level, message }) => {
@@ -13,7 +16,7 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
     new DailyRotateFile({
-      filename: path.join(process.argv[2] || "./logs", "defaulterr-%DATE%.log"),
+      filename: path.join(filePath, "defaulterr-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
       maxSize: "500k",
       maxFiles: "7d",
