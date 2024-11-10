@@ -231,7 +231,7 @@ const loadAndValidateYAML = () => {
     const isValid = validate(jsonData)
 
     if (isValid) {
-      logger.info("YAML file is valid according to the schema.")
+      logger.info("Validated and loaded config file")
       return jsonData
     }
     throw new Error(`\n${formatErrors(validate.errors)}`)
