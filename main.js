@@ -149,7 +149,31 @@ const setupCronJob = () => {
 // Fetch all libraries and map by ID
 const fetchAllLibraries = async () => {
   try {
-    const { data } = await axiosInstance.get("/library/sections")
+    const { data } = await axiosInstance.get("/library/sections").catch(async (error) => {
+      logger.error(`Error fetching libraries: ${error.message}. Retrying in 30 sec...`)
+      let res = error.response
+      let attempt = 1
+      await delay(30000)
+      while (res.status !== 200 && attempt < 10) {
+        await axiosInstance
+          .get("/library/sections")
+          .then((response) => (res = response))
+          .catch((error) => {
+            logger.error(
+              `Attempt ${attempt}/10 failed with error: ${error.message}. Retrying in 30 sec... `
+            )
+          })
+
+        if (res.status === 200) return res
+
+        attempt++
+        await delay(30000)
+      }
+      logger.error(
+        `All attempts failed. Verify connection to Plex before restarting. Shutting down.`
+      )
+      process.exit(1)
+    })
     const libraries = data?.MediaContainer?.Directory || []
     libraries.forEach((library) => {
       if (library.title in config.filters) {
@@ -357,7 +381,9 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
       if (audio.id) {
         partUpdate.audioStreamId = audio.id
-        logger.info(`Part ID ${part.partId}: match found for audio stream ${audio.extendedDisplayTitle}`)
+        logger.info(
+          `Part ID ${part.partId}: match found for audio stream ${audio.extendedDisplayTitle}`
+        )
       } else {
         logger.debug(`Part ID ${part.partId}: no match found for audio streams`)
       }
