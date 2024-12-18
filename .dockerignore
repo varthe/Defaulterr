@@ -1,7 +1,7 @@
-node_modules
-.github
-config
-logs
+node_modules/
+.github/
+config/
+logs/
 config.yaml
 npm-debug.log
 Dockerfile
@@ -12,3 +12,7 @@ Dockerfile
 example.json
 docker-compose.yaml
 eslint.config.mjs
+.vscode/
+.idea/
+*.iml
+.prettierrc
