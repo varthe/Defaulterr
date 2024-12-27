@@ -19,7 +19,10 @@ services:
       - /path/to/logs:/logs
     environment:
       - LOG_LEVEL=info
-```
+``` 
+
+### Unraid template
+Click [here](https://raw.githubusercontent.com/varthe/Defaulterr/refs/heads/main/defaulterr.xml) to download the Unraid template.
 
 ### Configuration Overview
 
