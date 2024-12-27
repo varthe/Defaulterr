@@ -21,7 +21,7 @@ services:
       - LOG_LEVEL=info
 ``` 
 
-### Unraid template
+### Unraid Template
 Click [here](https://raw.githubusercontent.com/varthe/Defaulterr/refs/heads/main/defaulterr.xml) to download the Unraid template.
 
 ### Configuration Overview
