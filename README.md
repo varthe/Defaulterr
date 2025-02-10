@@ -18,6 +18,7 @@ services:
       - /path/to/config:/config
       - /path/to/logs:/logs
     environment:
+      - TZ=Europe/London
       - LOG_LEVEL=info
 ``` 
 
