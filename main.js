@@ -168,14 +168,17 @@ const fetchAllLibraries = async () => {
             process.exit(1)
         })
         const libraries = data?.MediaContainer?.Directory || []
-        libraries.forEach((library) => {
-            if (library.title in config.filters) {
-                if (!["movie", "show"].includes(library.type))
-                    throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
-                LIBRARIES.set(library.key, { name: library.title, type: library.type })
-                logger.debug(`Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`)
-            }
-        })
+
+        for (const libraryName in config.filters) {
+            const library = libraries.find((lib) => lib.title.toLowerCase() === libraryName.toLowerCase())
+            if (!library) throw new Error(`Library '${libraryName}' not found in Plex response`)
+            if (library.type !== "movie" && library.type !== "show")
+                throw new Error(`Invalid library type '${library.type}'. Must be 'movie' or 'show'`)
+
+            LIBRARIES.set(library.key, { name: library.title, type: library.type })
+            logger.debug(`Mapped library: ${library.title} (ID: ${library.key}, Type: ${library.type})`)
+        }
+
         logger.info("Fetched and mapped libraries")
     } catch (error) {
         handleAxiosError("fetching libraries", error)
@@ -525,6 +528,7 @@ const identifyStreamsForDryRun = async () => {
 
 // Dry run to identify streams without applying updates
 const performDryRun = async () => {
+    await fetchAllLibraries()
     logger.info("STARTING DRY RUN. NO CHANGES WILL BE MADE.")
     await identifyStreamsForDryRun()
     logger.info("DRY RUN COMPLETE.")
@@ -532,6 +536,8 @@ const performDryRun = async () => {
 
 // Partial run: process items updated since last run
 const performPartialRun = async (cleanRun) => {
+    await fetchAllLibraries()
+
     logger.info(`STARTING ${cleanRun ? "CLEAN" : "PARTIAL"} RUN`)
 
     const lastRunTimestamps = cleanRun ? {} : loadLastRunTimestamps()
@@ -622,10 +628,17 @@ app.post("/webhook", async (req, res) => {
         const { type, libraryId, mediaId } = req.body
         if (!type || !libraryId || !mediaId) throw new Error("Error getting request body")
 
-        const libraryName = LIBRARIES.get(libraryId)?.name // LIBRARIES only has libraries present in filters
+        let libraryName = LIBRARIES.get(libraryId)?.name
         if (!libraryName) {
-            logger.info(`Library ID ${libraryId} not found in filters. Ending request`)
-            return res.status(200).send("Event not relevant")
+            // This only triggers if something goes wrong in Tautulli/Plex. Quick refresh should fix it.
+            logger.info(`Library ID ${libraryId} not found in filters. Attempting library refresh...`)
+            await fetchAllLibraries()
+
+            libraryName = LIBRARIES.get(libraryId)?.name
+            if (!libraryName) {
+                logger.info(`Library ID ${libraryId} not found in filters. Ending request`)
+                return res.status(200).send("Event not relevant")
+            }
         }
 
         const usersWithAccess = await fetchUsersWithAccess(libraryName)
@@ -717,8 +730,6 @@ app.listen(PORT, async () => {
         }
         await fetchAllUsersListedInFilters()
         if (USERS.size === 0) throw new Error("No users with access to libraries detected")
-
-        await fetchAllLibraries()
 
         if (config.dry_run) await performDryRun()
         else if (config.partial_run_on_start) await performPartialRun()
