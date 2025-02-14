@@ -734,6 +734,7 @@ app.listen(PORT, async () => {
         if (config.dry_run) await performDryRun()
         else if (config.partial_run_on_start) await performPartialRun()
         else if (config.clean_run_on_start) await performPartialRun(config.clean_run_on_start)
+        else await fetchAllLibraries()
 
         setupCronJob()
     } catch (error) {
