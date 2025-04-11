@@ -366,11 +366,13 @@ const identifyStreamsToUpdate = async (parts, filters) => {
             let audio = findMatchingAudioStream(part, filters.audio) || {}
             let subtitles = findMatchingSubtitleStream(part, filters.subtitles) || {}
 
-            if (audio.onMatch?.subtitles) {
+            if (audio?.onMatch?.subtitles) {
                 subtitles = findMatchingSubtitleStream(part, audio.onMatch.subtitles)
             }
 
-            if (subtitles.onMatch?.audio) audio = findMatchingAudioStream(part, subtitles.filter.onMatch.audio)
+            if (subtitles?.onMatch?.audio) {
+                audio = findMatchingAudioStream(part, subtitles.filter.onMatch.audio)
+            } 
 
             if (audio.id) {
                 partUpdate.audioStreamId = audio.id
