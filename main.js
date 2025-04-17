@@ -260,16 +260,27 @@ const evaluateStreams = (streams, filters) => {
 const fetchStreamsForItem = async (itemId) => {
     try {
         const { data } = await axiosInstance.get(`/library/metadata/${itemId}`)
+        const metadata = data?.MediaContainer?.Metadata[0]
+        var title = metadata?.title
+        if (metadata?.type == 'episode') {
+          title = `Episode ${metadata.index} - ${title}`
+        }
+        if (metadata?.parentTitle) {
+          title = `${metadata?.parentTitle} - ${title}`
+        }
+        if (metadata?.grandparentTitle) {
+          title = `${metadata?.grandparentTitle} - ${title}`
+        }
         const part = data?.MediaContainer?.Metadata[0]?.Media[0]?.Part[0]
         if (!part || !part.id || !part.Stream) {
-            logger.warn(`Item ID ${itemId} has invalid media structure. Skipping.`)
-            return { partId: itemId, streams: [] }
+            logger.warn(`Item ID ${itemId} '${title}' has invalid media structure. Skipping.`)
+            return { partId: itemId, title: title || 'title unknown', streams: [] }
         }
         const streams = part.Stream.filter((stream) => stream.streamType !== STREAM_TYPES.video)
-        return { partId: part.id, streams: streams }
+        return { partId: part.id, title: title, streams: streams }
     } catch (error) {
         handleAxiosError(`fetching streams for Item ID ${itemId}`, error)
-        return { partId: itemId, streams: [] } // Return empty streams on error
+        return { partId: itemId, title: 'title unknown', streams: [] } // Return empty streams on error
     }
 }
 
@@ -279,12 +290,13 @@ const fetchStreamsForSeason = async (seasonId) => {
         const { data } = await axiosInstance.get(`/library/metadata/${seasonId}/children`)
         const episodes = data?.MediaContainer?.Metadata || []
         if (episodes.length === 0) {
-            logger.warn(`No episodes found for Season ID ${seasonId}`)
+            logger.info(`No episodes found for '${data.parentTitle}' '${data.title}': Season ID ${seasonId}`)
             return []
         }
         // Fetch streams for each episode sequentially
         const streams = []
         for (const episode of episodes) {
+            logger.debug(`Fetching '${episode.grandparentTitle}' ${episode.parentTitle} Episode ${episode.index}: '${episode.title}' streams`)
             const stream = await fetchStreamsForItem(episode.ratingKey)
             streams.push(stream)
             // Optional: Delay between fetching each episode to reduce load
@@ -303,11 +315,12 @@ const fetchStreamsForShow = async (showId) => {
         const { data } = await axiosInstance.get(`/library/metadata/${showId}/children`)
         const seasons = data?.MediaContainer?.Metadata || []
         if (seasons.length === 0) {
-            logger.warn(`No seasons found for Show ID ${showId}`)
+            logger.warn(`No seasons found for Show ID ${showId}: '${data.title}'`)
             return []
         }
         const streams = []
         for (const season of seasons) {
+            logger.debug(`Fetching '${season.parentTitle}' Season '${season.index}' streams`)
             const seasonStreams = await fetchStreamsForSeason(season.ratingKey)
             streams.push(...seasonStreams)
             // Optional: Delay between fetching each season to reduce load
@@ -357,11 +370,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
         for (const part of parts) {
             if (!part.streams || part.streams.length <= 1) {
-                logger.info(`Part ID ${part.partId} has only one stream. Skipping.`)
+                logger.info(`Part ID ${part.partId} ('${part.title}') has only one stream. Skipping.`)
                 continue
             }
 
-            const partUpdate = { partId: part.partId }
+            const partUpdate = { partId: part.partId, title: part.title }
 
             let audio = findMatchingAudioStream(part, filters.audio) || {}
             let subtitles = findMatchingSubtitleStream(part, filters.subtitles) || {}
@@ -372,25 +385,25 @@ const identifyStreamsToUpdate = async (parts, filters) => {
 
             if (subtitles?.onMatch?.audio) {
                 audio = findMatchingAudioStream(part, subtitles.filter.onMatch.audio)
-            } 
+            }
 
             if (audio.id) {
                 partUpdate.audioStreamId = audio.id
-                logger.info(`Part ID ${part.partId}: match found for audio stream ${audio.extendedDisplayTitle}`)
+                logger.info(`Part ID ${part.partId} ('${part.title}'): match found for audio stream ${audio.extendedDisplayTitle}`)
             } else {
-                logger.debug(`Part ID ${part.partId}: no match found for audio streams`)
+                logger.debug(`Part ID ${part.partId} ('${part.title}'): no match found for audio streams`)
             }
             if (subtitles.id >= 0) {
                 partUpdate.subtitleStreamId = subtitles.id
                 logger.info(
-                    `Part ID ${part.partId}: ${
+                    `Part ID ${part.partId} ('${part.title}'): ${
                         subtitles.id === 0
                             ? "subtitles disabled"
                             : `match found for subtitle stream ${subtitles.extendedDisplayTitle}`
                     }`
                 )
             } else {
-                logger.debug(`Part ID ${part.partId}: no match found for subtitle streams`)
+                logger.debug(`Part ID ${part.partId} ('${part.title}'): no match found for subtitle streams`)
             }
 
             if (partUpdate.audioStreamId || partUpdate.subtitleStreamId >= 0) {
@@ -496,7 +509,9 @@ const identifyStreamsForDryRun = async () => {
 
         if (type === "movie") {
             for (const item of updatedItems) {
-                const stream = await fetchStreamsForItem(item.ratingKey)
+                const { title, ratingKey } = item;
+                logger.info(`Fetching streams for ${type} '${title}'`)
+                const stream = await fetchStreamsForItem(ratingKey)
                 const groupFilters = config.filters[libraryName]
                 const newStreams = {}
 
@@ -510,7 +525,9 @@ const identifyStreamsForDryRun = async () => {
             }
         } else if (type === "show") {
             for (const item of updatedItems) {
-                const showStreams = await fetchStreamsForShow(item.ratingKey)
+                const { title, ratingKey } = item;
+                logger.info(`Fetching streams for ${type} '${title}'`)
+                const showStreams = await fetchStreamsForShow(ratingKey)
                 for (const stream of showStreams) {
                     const groupFilters = config.filters[libraryName]
                     const newStreams = {}
