@@ -1,8 +1,12 @@
-plex_server_url: ""
+plex_server_url: "http://localhost:32400"
 plex_token: "" # User must fill this
 owner_username: "" # User must fill this with their Plex username
 check_interval: 10
 dry_run: true
+
+# Mode: "webhook" (requires Plex Pass) or "polling" (legacy mode)
+mode: "webhook"
+webhook_port: 3000
 
 # audio_selector: An ordered list of rules for selecting the best audio stream.
 # Rules are processed from top to bottom. The first rule that matches an audio stream

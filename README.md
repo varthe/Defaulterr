@@ -38,6 +38,22 @@ When Plex transcodes your media due to audio codec incompatibility, it wastes se
 
 3. Configure the application (see Configuration section below)
 
+## Operating Modes
+
+Audiochangerr supports two modes of operation:
+
+### Webhook Mode (Recommended)
+- **Instant response** to playback events
+- **Requires**: Active Plex Pass subscription
+- **Pros**: Near-zero latency, minimal server load
+- **Cons**: Requires network configuration (port forwarding/firewall)
+
+### Polling Mode (Legacy)
+- **Periodic checking** for transcode sessions
+- **No special requirements**
+- **Pros**: Simple setup, works without Plex Pass
+- **Cons**: 10+ second delay, constant API polling
+
 ## Configuration
 
 Edit `config.yaml` to configure Audiochangerr:
@@ -46,8 +62,12 @@ Edit `config.yaml` to configure Audiochangerr:
 plex_server_url: "http://your-plex-server:32400"
 plex_token: "YOUR_PLEX_TOKEN"
 owner_username: "YOUR_PLEX_USERNAME"
-check_interval: 10  # seconds between session checks
+check_interval: 10  # seconds between session checks (polling mode only)
 dry_run: true       # set to false to enable actual changes
+
+# Mode: "webhook" (requires Plex Pass) or "polling" (legacy mode)
+mode: "webhook"
+webhook_port: 3000
 
 audio_selector:
   - codec: "ac3"
@@ -73,8 +93,10 @@ audio_selector:
 - **plex_server_url**: Your Plex server URL (e.g., `http://localhost:32400`)
 - **plex_token**: Your Plex authentication token ([How to find your token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/))
 - **owner_username**: Your Plex username (account owner)
-- **check_interval**: How often to check for active sessions (in seconds)
+- **check_interval**: How often to check for active sessions (in seconds) - only used in polling mode
 - **dry_run**: When `true`, logs actions without making changes (recommended for testing)
+- **mode**: Operating mode - `"webhook"` or `"polling"`
+- **webhook_port**: Port for webhook HTTP server (only used in webhook mode)
 
 ### Audio Selector Rules
 
@@ -86,6 +108,52 @@ Each rule can specify:
 - **language**: Language code (e.g., `eng`, `jpn`) or `original` to match the current stream's language
 - **keywords_include** (optional): Stream title must contain at least one of these keywords
 - **keywords_exclude** (optional): Stream title must NOT contain any of these keywords (takes precedence)
+
+## Webhook Mode Setup
+
+If using webhook mode (recommended for Plex Pass users), follow these additional steps:
+
+### 1. Start Audiochangerr
+
+```bash
+npm start
+```
+
+You'll see output like:
+```
+[INFO]: Webhook server listening on port 3000
+[INFO]: Configure Plex webhook URL: http://YOUR_SERVER_IP:3000/webhook
+[INFO]: Health check available at: http://localhost:3000/health
+```
+
+### 2. Configure Plex Webhook
+
+1. Open **Plex Web App** in your browser
+2. Click your **user icon** (top right) → **Account**
+3. Scroll down to **Webhooks** section
+4. Click **Add Webhook**
+5. Enter the URL: `http://YOUR_SERVER_IP:3000/webhook`
+   - Replace `YOUR_SERVER_IP` with the IP address where Audiochangerr is running
+   - If on the same machine as Plex: use `http://localhost:3000/webhook`
+   - If on a different machine: use the actual IP address
+6. Click **Save**
+
+### 3. Test Webhook
+
+1. Play any media in Plex
+2. Check Audiochangerr logs for: `[INFO]: Webhook received: media.play`
+3. Visit `http://localhost:3000/health` to verify webhooks are being received
+
+### 4. Enable Live Mode
+
+Once verified working, set `dry_run: false` in `config.yaml` and restart.
+
+### Network Requirements for Webhooks
+
+- **Firewall**: Ensure port `3000` (or your configured port) is open
+- **Same Network**: If Plex and Audiochangerr are on the same network, use local IP
+- **Different Network**: May require port forwarding or reverse proxy
+- **Plex Pass**: Active subscription required for webhook functionality
 
 ## Usage
 
@@ -158,6 +226,36 @@ Logs are written to the console with different levels:
 **Q: Works for owner but not managed users**
 - Managed users require proper authentication through Plex.tv
 - Check logs for managed user token fetch errors
+
+**Q: Webhook mode not receiving webhooks**
+- Verify Plex Pass subscription is active
+- Check webhook is configured in Plex Web App (Settings > Account > Webhooks)
+- Ensure firewall allows the webhook port
+- Visit `http://localhost:3000/health` to check webhook status
+- Check Audiochangerr logs for connection errors
+
+**Q: Should I use webhook or polling mode?**
+- **Use webhook mode if**: You have Plex Pass and want instant response
+- **Use polling mode if**: You don't have Plex Pass or prefer simpler setup
+
+## Mode Comparison
+
+| Feature | Webhook Mode | Polling Mode |
+|---------|-------------|--------------|
+| **Response Time** | Instant (< 1 second) | 10+ seconds |
+| **Server Load** | Minimal (event-driven) | Constant API polling |
+| **Plex Pass Required** | ✅ Yes | ❌ No |
+| **Network Setup** | Port forwarding may be needed | None |
+| **Setup Complexity** | Moderate | Simple |
+| **Reliability** | Depends on network | More predictable |
+| **Recommended For** | Production use with Plex Pass | Testing or non-Plex Pass users |
+
+## Testing
+
+Run unit tests:
+```bash
+node test-webhook.js
+```
 
 ## Contributing
 

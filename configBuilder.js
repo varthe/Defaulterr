@@ -12,208 +12,34 @@ const schema = {
     type: "object",
     properties: {
         plex_server_url: { type: "string", minLength: 1 },
-        plex_owner_name: { type: "string" },
-        plex_owner_token: { type: "string", minLength: 1 },
-        plex_client_identifier: { type: "string", minLength: 1 },
+        plex_token: { type: "string" },
+        owner_username: { type: "string" },
+        check_interval: { type: "number", minimum: 1 },
         dry_run: { type: "boolean" },
-        partial_run_on_start: { type: "boolean" },
-        partial_run_cron_expression: { type: "string" },
-        clean_run_on_start: { type: "boolean" },
-        managed_users: {
-            type: "object",
-            additionalProperties: { type: "string" },
-        },
-        groups: {
-            type: "object",
-            patternProperties: {
-                ".*": {
-                    type: "array",
-                    items: { type: "string" },
-                },
-            },
-            additionalProperties: false,
-        },
-        filters: {
-            type: "object",
-            patternProperties: {
-                ".*": {
-                    type: "object",
-                    patternProperties: {
-                        ".*": {
-                            type: "object",
-                            properties: {
-                                audio: {
-                                    type: "array",
-                                    items: {
-                                        type: "object",
-                                        properties: {
-                                            include: {
-                                                type: "object",
-                                                additionalProperties: {
-                                                    oneOf: [
-                                                        { type: "string" }, // Single value
-                                                        {
-                                                            type: "array",
-                                                            items: { type: "string" }, // Array of values
-                                                        },
-                                                    ],
-                                                },
-                                            },
-                                            exclude: {
-                                                type: "object",
-                                                additionalProperties: {
-                                                    oneOf: [
-                                                        { type: "string" }, // Single value
-                                                        {
-                                                            type: "array",
-                                                            items: { type: "string" }, // Array of values
-                                                        },
-                                                    ],
-                                                },
-                                            },
-                                            on_match: {
-                                                type: "object",
-                                                properties: {
-                                                    subtitles: {
-                                                        oneOf: [
-                                                            { type: "string", enum: ["disabled"] },
-                                                            {
-                                                                type: "array",
-                                                                items: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        include: {
-                                                                            type: "object",
-                                                                            additionalProperties: {
-                                                                                oneOf: [
-                                                                                    { type: "string" }, // Single value
-                                                                                    {
-                                                                                        type: "array",
-                                                                                        items: { type: "string" }, // Array of values
-                                                                                    },
-                                                                                ],
-                                                                            },
-                                                                        },
-                                                                        exclude: {
-                                                                            type: "object",
-                                                                            additionalProperties: {
-                                                                                oneOf: [
-                                                                                    { type: "string" }, // Single value
-                                                                                    {
-                                                                                        type: "array",
-                                                                                        items: { type: "string" }, // Array of values
-                                                                                    },
-                                                                                ],
-                                                                            },
-                                                                        },
-                                                                    },
-                                                                    additionalProperties: false,
-                                                                },
-                                                            },
-                                                        ],
-                                                    },
-                                                },
-                                                additionalProperties: false,
-                                            },
-                                        },
-                                        additionalProperties: false,
-                                    },
-                                },
-                                subtitles: {
-                                    oneOf: [
-                                        { type: "string", enum: ["disabled"] },
-                                        {
-                                            type: "array",
-                                            items: {
-                                                type: "object",
-                                                properties: {
-                                                    include: {
-                                                        type: "object",
-                                                        additionalProperties: {
-                                                            oneOf: [
-                                                                { type: "string" }, // Single value
-                                                                {
-                                                                    type: "array",
-                                                                    items: { type: "string" }, // Array of values
-                                                                },
-                                                            ],
-                                                        },
-                                                    },
-                                                    exclude: {
-                                                        type: "object",
-                                                        additionalProperties: {
-                                                            oneOf: [
-                                                                { type: "string" }, // Single value
-                                                                {
-                                                                    type: "array",
-                                                                    items: { type: "string" }, // Array of values
-                                                                },
-                                                            ],
-                                                        },
-                                                    },
-                                                    on_match: {
-                                                        type: "object",
-                                                        properties: {
-                                                            audio: {
-                                                                oneOf: [
-                                                                    { type: "string", enum: ["disabled"] },
-                                                                    {
-                                                                        type: "array",
-                                                                        items: {
-                                                                            type: "object",
-                                                                            properties: {
-                                                                                include: {
-                                                                                    type: "object",
-                                                                                    additionalProperties: {
-                                                                                        oneOf: [
-                                                                                            { type: "string" }, // Single value
-                                                                                            {
-                                                                                                type: "array",
-                                                                                                items: {
-                                                                                                    type: "string",
-                                                                                                }, // Array of values
-                                                                                            },
-                                                                                        ],
-                                                                                    },
-                                                                                },
-                                                                                exclude: {
-                                                                                    type: "object",
-                                                                                    additionalProperties: {
-                                                                                        oneOf: [
-                                                                                            { type: "string" }, // Single value
-                                                                                            {
-                                                                                                type: "array",
-                                                                                                items: {
-                                                                                                    type: "string",
-                                                                                                }, // Array of values
-                                                                                            },
-                                                                                        ],
-                                                                                    },
-                                                                                },
-                                                                            },
-                                                                            additionalProperties: false,
-                                                                        },
-                                                                    },
-                                                                ],
-                                                            },
-                                                        },
-                                                        additionalProperties: false,
-                                                    },
-                                                },
-                                                additionalProperties: false,
-                                            },
-                                        },
-                                    ],
-                                },
-                            },
-                            additionalProperties: false,
-                        },
+        mode: { type: "string", enum: ["polling", "webhook"] },
+        webhook_port: { type: "integer", minimum: 1, maximum: 65535 },
+        audio_selector: {
+            type: "array",
+            items: {
+                type: "object",
+                properties: {
+                    codec: { type: "string" },
+                    channels: { type: "integer", minimum: 1 },
+                    language: { type: "string" },
+                    keywords_include: {
+                        type: "array",
+                        items: { type: "string" }
                     },
+                    keywords_exclude: {
+                        type: "array",
+                        items: { type: "string" }
+                    }
                 },
-            },
-        },
+                additionalProperties: false
+            }
+        }
     },
-    required: ["plex_server_url", "plex_owner_token", "plex_client_identifier", "groups", "filters"],
+    required: ["plex_server_url", "audio_selector"],
     additionalProperties: false,
 }
 
