@@ -2,7 +2,7 @@ name: Publish image to Docker Hub
 
 on:
   release:
-    types: [published]
+    types: [prereleased, released]
   workflow_dispatch:
 
 jobs:
@@ -22,4 +22,6 @@ jobs:
       - name: Build and push multi-arch image
         run: |
           docker buildx create --use
-          docker buildx build --platform linux/amd64,linux/arm64 -t varthe/defaulterr:latest --push .
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t varthe/defaulterr:${{ github.event.release.prerelease && 'beta' || 'latest' }} \
+            --push .
