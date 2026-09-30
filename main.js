@@ -446,17 +446,17 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                             logger.error(
                                 `Error while posting update for user ${username} in group ${group}: ${error.message}
                                 ${error.status === 403 ? ". Ensure they have access to the relevant items in the library": ""}
-                                ${config.ignore_failed_updates ? ". Skipping..." : "Retrying in 30 sec..."}
+                                ${config.ignore_failed_updates ? ". Skipping..." : "Retrying in 3 sec..."}
                                 `
                             )
                             
                             if (config.ignore_failed_updates) return
 
-                            await delay(30000)
+                            await delay(3000)
                             let responseStatus = ""
                             let attempt = 1
-                            while (responseStatus !== 200 && attempt < 10) {
-                                await axiosInstance
+                            while (responseStatus !== 200 && attempt < 3) {
+                                const retryResponse = await axiosInstance
                                     .post(
                                         `/library/parts/${stream.partId}?${queryParams.toString()}`,
                                         {},
@@ -465,17 +465,17 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                                     .then((response) => (responseStatus = response.status))
                                     .catch((error) => {
                                         logger.error(
-                                            `Attempt ${attempt}/10 failed with error: ${error.message}. Retrying in 30 sec...`
+                                            `Attempt ${attempt}/3 failed with error: ${error.message}. Retrying in 3 sec...`
                                         )
                                     })
                                 if (responseStatus !== 200) {
                                     attempt++
-                                    await delay(30000)
+                                    await delay(3000)
                                 }
+                                return retryResponse
                             }
                             if (responseStatus !== 200) {
-                                logger.error("All attemps failed. Exiting application.")
-                                process.exit(1)
+                                logger.error("All attempts failed. Skipping...")
                             }
                         })
 
