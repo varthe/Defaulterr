@@ -379,11 +379,11 @@ const identifyStreamsToUpdate = async (parts, filters) => {
             let subtitles = findMatchingSubtitleStream(part, filters.subtitles) || {}
 
             if (audio?.onMatch?.subtitles) {
-                subtitles = findMatchingSubtitleStream(part, audio.onMatch.subtitles)
+                subtitles = findMatchingSubtitleStream(part, audio.onMatch.subtitles) || {}
             }
 
             if (subtitles?.onMatch?.audio) {
-                audio = findMatchingAudioStream(part, subtitles.filter.onMatch.audio)
+                audio = findMatchingAudioStream(part, subtitles.onMatch.audio) || {}
             }
 
             if (audio.id) {
@@ -446,11 +446,11 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                             logger.error(
                                 `Error while posting update for user ${username} in group ${group}: ${error.message}
                                 ${error.status === 403 ? ". Ensure they have access to the relevant items in the library": ""}
-                                ${config.ignore_failed_updates ? ". Skipping..." : "Retrying in 3 sec..."}
+                                ${config.skip_failed_updates ? ". Skipping..." : "Retrying in 3 sec..."}
                                 `
                             )
                             
-                            if (config.ignore_failed_updates) return
+                            if (config.skip_failed_updates) return
 
                             await delay(3000)
                             let responseStatus = ""
@@ -462,20 +462,18 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                                         {},
                                         { headers: { "X-Plex-Token": token } }
                                     )
-                                    .then((response) => (responseStatus = response.status))
+                                    .then((response) => {
+                                        responseStatus = response.status
+                                        return response
+                                    })
                                     .catch((error) => {
                                         logger.error(
                                             `Attempt ${attempt}/3 failed with error: ${error.message}. Retrying in 3 sec...`
                                         )
                                     })
-                                if (responseStatus !== 200) {
-                                    attempt++
-                                    await delay(3000)
-                                }
-                                return retryResponse
-                            }
-                            if (responseStatus !== 200) {
-                                logger.error("All attempts failed. Skipping...")
+                                if (responseStatus === 200) return retryResponse
+                                attempt++
+                                await delay(3000)
                             }
                         })
 
