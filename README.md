@@ -46,6 +46,7 @@ See [config.yaml](https://github.com/varthe/Defaulterr/blob/main/config.yaml) fo
   - **WARNING**: The first run may take a LONG time to complete as it will update all existing media. Subsequent runs will only update any new items added since the last run.
 - **partial_run_cron_expression**: Specify a cron expression (e.g., `0 3 * * *` for daily at 3:00 AM) to do a partial run on a schedule. You can create and check cron expressions at [https://crontab.guru/](https://crontab.guru/).
 - **clean_run_on_start**: Set to `True` to update all existing media on application start. Should only be used if you want to re-apply a new set of filters on your libraries.
+- **skip_failed_updates**: Set to `True` to prevent retries of failed user updates
 
 #### GROUPS
 
