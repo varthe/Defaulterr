@@ -20,10 +20,7 @@ services:
     environment:
       - TZ=Europe/London
       - LOG_LEVEL=info
-``` 
-
-### Unraid Template
-Click [here](https://raw.githubusercontent.com/varthe/Defaulterr/refs/heads/main/defaulterr.xml) to download the Unraid template.
+```
 
 ### Configuration Overview
 
