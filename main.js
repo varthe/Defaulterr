@@ -146,10 +146,10 @@ const fetchAllLibraries = async () => {
     try {
         const { data } = await axiosInstance.get("/library/sections").catch(async (error) => {
             logger.error(`Error fetching libraries: ${error.message}. Retrying in 30 sec...`)
-            let res = error.response
+            let res = error.response || {}
             let attempt = 1
             await delay(30000)
-            while (res.status !== 200 && attempt < 10) {
+            while (res?.status !== 200 && attempt < 10) {
                 await axiosInstance
                     .get("/library/sections")
                     .then((response) => (res = response))
@@ -164,8 +164,7 @@ const fetchAllLibraries = async () => {
                 attempt++
                 await delay(30000)
             }
-            logger.error(`All attempts failed. Verify connection to Plex before restarting. Shutting down.`)
-            process.exit(1)
+            throw new Error(`could not reach Plex after ${attempt} attempts`)
         })
         const libraries = data?.MediaContainer?.Directory || []
 
