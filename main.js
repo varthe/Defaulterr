@@ -445,12 +445,14 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                         )
                         .catch(async (error) => {
                             logger.error(
-                                `Error while posting update for user ${username} in group ${group}${
-                                    error.status === 403
-                                        ? ". This could be because of age ratings, ensure they can access ALL items in the library"
-                                        : ""
-                                }: ${error.message}. Retrying in 30 sec...`
+                                `Error while posting update for user ${username} in group ${group}: ${error.message}
+                                ${error.status === 403 ? ". Ensure they have access to the relevant items in the library": ""}
+                                ${config.ignore_failed_updates ? ". Skipping..." : "Retrying in 30 sec..."}
+                                `
                             )
+                            
+                            if (config.ignore_failed_updates) return
+
                             await delay(30000)
                             let responseStatus = ""
                             let attempt = 1
@@ -483,7 +485,7 @@ const updateDefaultStreamsPerItem = async (streamsToUpdate, filters, users) => {
                     const updateMessage = [audioMessage, subtitleMessage].filter(Boolean).join(" and ")
                     logger.debug(
                         `Update ${updateMessage} for user ${username} in group ${group}: ${
-                            response.status === 200 ? "SUCCESS" : "FAIL"
+                            response?.status === 200 ? "SUCCESS" : "FAIL"
                         }`
                     )
                 } catch (error) {
